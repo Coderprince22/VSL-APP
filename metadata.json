@@ -1,0 +1,6 @@
+{
+  "name": "Matope Village",
+  "description": "A modern offline-first mobile banking organizer for village savings groups to track contributions, request loans, view real-time analytics, and receive support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
