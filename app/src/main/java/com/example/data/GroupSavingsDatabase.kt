@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [Contribution::class, Loan::class, TransactionRecord::class],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class GroupSavingsDatabase : RoomDatabase() {

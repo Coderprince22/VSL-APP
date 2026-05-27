@@ -10,7 +10,7 @@ data class Contribution(
     val amount: Double,
     val date: Long = System.currentTimeMillis(),
     val notes: String = "",
-    val groupId: String = "Main Village Group"
+    val groupId: String = "Matope Village Bank"
 )
 
 @Entity(tableName = "loans")
@@ -25,7 +25,8 @@ data class Loan(
     val dueDate: Long = System.currentTimeMillis() + (30L * 24 * 60 * 60 * 1000 * 3), // default 3 months
     val status: String = "Pending Approval", // "Pending Approval", "Approved", "Repaid", "Overdue"
     val notes: String = "",
-    val isReminderEnabled: Boolean = true
+    val isReminderEnabled: Boolean = true,
+    val groupId: String = "Matope Village Bank"
 ) {
     val totalRepaymentAmount: Double
         get() = principalAmount * (1.0 + (interestRatePercent / 100.0))
@@ -43,5 +44,6 @@ data class TransactionRecord(
     val timestamp: Long = System.currentTimeMillis(),
     val description: String,
     val isEncrypted: Boolean = true,
-    val hashSignature: String = "" // cryptographic-like verification indicator
+    val hashSignature: String = "", // cryptographic-like verification indicator
+    val groupId: String = "Matope Village Bank"
 )

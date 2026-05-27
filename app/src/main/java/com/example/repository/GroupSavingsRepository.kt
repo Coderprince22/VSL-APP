@@ -27,11 +27,12 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
         }
     }
 
-    suspend fun addContribution(memberName: String, amount: Double, notes: String) {
+    suspend fun addContribution(memberName: String, amount: Double, notes: String, groupId: String = "Matope Village Bank") {
         val contribution = Contribution(
             memberName = memberName,
             amount = amount,
-            notes = notes
+            notes = notes,
+            groupId = groupId
         )
         val id = dao.insertContribution(contribution)
         
@@ -47,12 +48,13 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
             timestamp = timestamp,
             description = description,
             isEncrypted = true,
-            hashSignature = signature
+            hashSignature = signature,
+            groupId = groupId
         )
         dao.insertTransactionRecord(record)
     }
 
-    suspend fun requestLoan(memberName: String, principalAmount: Double, interestPercent: Double, durationMonths: Int, notes: String) {
+    suspend fun requestLoan(memberName: String, principalAmount: Double, interestPercent: Double, durationMonths: Int, notes: String, groupId: String = "Matope Village Bank") {
         val dueDate = System.currentTimeMillis() + (durationMonths * 30L * 24 * 60 * 60 * 1000)
         val loan = Loan(
             memberName = memberName,
@@ -63,7 +65,8 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
             dateRequested = System.currentTimeMillis(),
             dueDate = dueDate,
             status = "Pending Approval",
-            notes = notes
+            notes = notes,
+            groupId = groupId
         )
         val id = dao.insertLoan(loan)
 
@@ -77,7 +80,8 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
             timestamp = timestamp,
             description = "Requested loan of $principalAmount with ${interestPercent}% interest for $durationMonths months. [Ref #L$id]",
             isEncrypted = true,
-            hashSignature = signature
+            hashSignature = signature,
+            groupId = groupId
         )
         dao.insertTransactionRecord(record)
     }
@@ -98,7 +102,8 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
                 timestamp = timestamp,
                 description = "Disbursed loan of ${loan.principalAmount} in cash to member. [Audit ID #DISB-$loanId]",
                 isEncrypted = true,
-                hashSignature = signature
+                hashSignature = signature,
+                groupId = loan.groupId
             )
             dao.insertTransactionRecord(record)
         }
@@ -120,7 +125,8 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
                 timestamp = timestamp,
                 description = "Loan request of ${loan.principalAmount} was rejected by group vote.",
                 isEncrypted = true,
-                hashSignature = signature
+                hashSignature = signature,
+                groupId = loan.groupId
             )
             dao.insertTransactionRecord(record)
         }
@@ -149,7 +155,8 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
                 timestamp = timestamp,
                 description = "Repayment of $amount received for loan #$loanId. Remaining: ${updated.remainingAmount}.",
                 isEncrypted = true,
-                hashSignature = signature
+                hashSignature = signature,
+                groupId = loan.groupId
             )
             dao.insertTransactionRecord(record)
         }
@@ -166,17 +173,24 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
         dao.clearLoans()
         dao.clearTransactionRecords()
 
-        // Reseed dummy records for starting state
-        addContribution("Mariam Phiri", 250.00, "Monthly contributions for May")
-        addContribution("Chiku Banda", 300.00, "May contributions and group tea fee")
-        addContribution("John Mwiyo", 200.00, "Regular contribution")
-        addContribution("Grace Chiume", 400.00, "Early contribution for June")
+        // 1. Seed Matope Village Bank
+        addContribution("Mariam Phiri", 250.00, "Monthly contributions for May", "Matope Village Bank")
+        addContribution("Chiku Banda", 300.00, "May contributions and group tea fee", "Matope Village Bank")
+        addContribution("John Mwiyo", 200.00, "Regular contribution", "Matope Village Bank")
+        addContribution("Grace Chiume", 400.00, "Early contribution for June", "Matope Village Bank")
+        requestLoan("Chiku Banda", 500.00, 10.0, 3, "For seed fertilizer purchase", "Matope Village Bank")
+        requestLoan("Emily Mkandawire", 1000.00, 8.0, 4, "SME shop inventory expansion", "Matope Village Bank")
 
-        requestLoan("Chiku Banda", 500.00, 10.0, 3, "For seed fertilizer purchase")
-        requestLoan("Emily Mkandawire", 1000.00, 8.0, 4, "SME shop inventory expansion")
+        // 2. Seed Chichiri Savings Group
+        addContribution("Chimwemwe Mwale", 450.00, "Initial savings", "Chichiri Savings Group")
+        addContribution("Limbani Gondwe", 350.00, "Group contribution", "Chichiri Savings Group")
+        addContribution("Towela Nyirenda", 500.00, "May saving shares", "Chichiri Savings Group")
+        requestLoan("Limbani Gondwe", 300.00, 12.0, 2, "School fees for children", "Chichiri Savings Group")
 
-        // Let's approve Chiku's loan so there's an active approved loan
-        val loansList = mutableListOf<Loan>()
-        // Note: For seeding we can do this directly or let the VM do it. Let's do it directly.
+        // 3. Seed Zomba Community Fund
+        addContribution("Yamikani Banda", 600.00, "Zomba share investment", "Zomba Community Fund")
+        addContribution("Blessings Chimoyo", 800.00, "Large investment share", "Zomba Community Fund")
+        addContribution("Chisomo Phiri", 400.00, "May regular share", "Zomba Community Fund")
+        requestLoan("Chisomo Phiri", 200.00, 15.0, 1, "Water pipe installation", "Zomba Community Fund")
     }
 }

@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,6 +47,7 @@ import com.example.ui.viewmodel.AuthState
 import com.example.ui.viewmodel.BackupLog
 import com.example.ui.viewmodel.Message
 import com.example.ui.viewmodel.SavingsViewModel
+import com.example.ui.viewmodel.MemberDetails
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -524,6 +526,275 @@ fun DashboardTabScreen(
             )
         }
 
+        item {
+            val activeBank by viewModel.selectedBank.collectAsStateWithLifecycle()
+            
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(themeSurface, RoundedCornerShape(16.dp))
+                    .border(0.5.dp, SageNeutral, RoundedCornerShape(16.dp))
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "SELECT VILLAGE BANK",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GoldAccent,
+                    letterSpacing = 0.5.sp
+                )
+                
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(viewModel.availableBanks) { bank ->
+                        val isSelected = bank == activeBank
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) MintPrimary else SageNeutral.copy(alpha = 0.4f))
+                                .border(1.dp, if (isSelected) MintPrimary else SageNeutral, RoundedCornerShape(12.dp))
+                                .clickable { viewModel.selectBank(bank) }
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = bank,
+                                color = if (isSelected) SolidBlack else themeText,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            val membersList by viewModel.membersStats.collectAsStateWithLifecycle()
+            val activeBank by viewModel.selectedBank.collectAsStateWithLifecycle()
+            var selectedMemberForDetail by remember { mutableStateOf<MemberDetails?>(null) }
+            
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(themeSurface, RoundedCornerShape(16.dp))
+                    .border(0.5.dp, SageNeutral, RoundedCornerShape(16.dp))
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "VILLAGE BANK MEMBERS",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldAccent,
+                        letterSpacing = 0.5.sp
+                    )
+                    Text(
+                        text = "Tap for Details",
+                        fontSize = 10.sp,
+                        color = themeText.copy(alpha = 0.5f)
+                    )
+                }
+                
+                if (membersList.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No registered members. Use 'Reseed' button below.",
+                            color = themeText.copy(alpha = 0.5f),
+                            fontSize = 11.sp
+                        )
+                    }
+                } else {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(membersList) { member ->
+                            val initials = if (member.memberName.isNotBlank()) {
+                                member.memberName.split(" ")
+                                    .filter { it.isNotBlank() }
+                                    .take(2)
+                                    .map { it.first().uppercase() }
+                                    .joinToString("")
+                            } else "M"
+                            
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .width(84.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(SageNeutral.copy(alpha = 0.2f))
+                                    .clickable { selectedMemberForDetail = member }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(MintPrimary),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = initials,
+                                        color = SolidBlack,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = member.memberName,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = themeText,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Text(
+                                    text = "MK " + String.format(Locale.US, "%,.0f", member.cumulativeContributions * 1700),
+                                    fontSize = 9.sp,
+                                    color = LightSageText,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+
+                selectedMemberForDetail?.let { member ->
+                    AlertDialog(
+                        onDismissRequest = { selectedMemberForDetail = null },
+                        containerColor = ForestCard,
+                        title = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                val initials = member.memberName.split(" ").filter { it.isNotBlank() }.take(2).map { it.first().uppercase() }.joinToString("")
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(CircleShape)
+                                        .background(MintPrimary),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(initials, color = SolidBlack, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Column {
+                                    Text(
+                                        text = member.memberName,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = activeBank,
+                                        fontSize = 11.sp,
+                                        color = GoldAccent
+                                    )
+                                }
+                            }
+                        },
+                        text = {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Divider(color = SageNeutral, thickness = 0.5.dp)
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Cumulative Contributions", fontSize = 12.sp, color = LightSageText.copy(alpha = 0.8f))
+                                    Text(
+                                        "MK " + String.format(Locale.US, "%,.0f", member.cumulativeContributions * 1700),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MintPrimary
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Interest Paid Back", fontSize = 12.sp, color = LightSageText.copy(alpha = 0.8f))
+                                    Text(
+                                        "MK " + String.format(Locale.US, "%,.0f", member.interestPaid * 1700),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldAccent
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Outstanding Loans", fontSize = 12.sp, color = LightSageText.copy(alpha = 0.8f))
+                                    Text(
+                                        "MK " + String.format(Locale.US, "%,.0f", member.activeLoansRemaining * 1700),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TerracottaWarn
+                                    )
+                                }
+
+                                Divider(color = SageNeutral, thickness = 0.5.dp)
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(SageNeutral.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                        .padding(10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text("GRAND TOTAL", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                        Text("Net Portfolio Share", fontSize = 9.sp, color = LightSageText.copy(alpha = 0.5f))
+                                    }
+                                    Text(
+                                        "MK " + String.format(Locale.US, "%,.0f", member.grandTotalPortfolio * 1700),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MintPrimary
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = { selectedMemberForDetail = null }
+                            ) {
+                                Text("Close", color = MintPrimary, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
         // Analytics Cards Panel: HTML-mock 1-to-1 "Elegant Dark" light purple hero card with deep violet text
         item {
             Column(
@@ -780,6 +1051,7 @@ fun ContributionsTabScreen(
     themeText: Color
 ) {
     val contributionsList by viewModel.contributions.collectAsStateWithLifecycle()
+    val activeBank by viewModel.selectedBank.collectAsStateWithLifecycle()
     var isFormOpen by remember { mutableStateOf(false) }
 
     // Form inputs state
@@ -809,9 +1081,10 @@ fun ContributionsTabScreen(
                             color = MintPrimary
                         )
                         Text(
-                            text = "${contributionsList.size} members recorded offline",
+                            text = "$activeBank (${contributionsList.size} records)",
                             fontSize = 12.sp,
-                            color = themeText.copy(alpha = 0.7f)
+                            fontWeight = FontWeight.SemiBold,
+                            color = GoldAccent
                         )
                     }
 
@@ -1008,6 +1281,7 @@ fun LoansTabScreen(
     themeText: Color
 ) {
     val loansList by viewModel.loans.collectAsStateWithLifecycle()
+    val activeBank by viewModel.selectedBank.collectAsStateWithLifecycle()
     var isRequestOpen by remember { mutableStateOf(false) }
 
     // Req Form states
@@ -1044,9 +1318,10 @@ fun LoansTabScreen(
                             color = GoldAccent
                         )
                         Text(
-                            text = "Standard 10% Interest Rate",
-                            fontSize = 11.sp,
-                            color = themeText.copy(alpha = 0.7f)
+                            text = "$activeBank (${loansList.size} loans)",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MintPrimary
                         )
                     }
 

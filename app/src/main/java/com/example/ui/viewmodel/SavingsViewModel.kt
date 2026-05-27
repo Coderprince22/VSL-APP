@@ -27,6 +27,14 @@ data class BackupLog(
     val cloudSignature: String
 )
 
+data class MemberDetails(
+    val memberName: String,
+    val cumulativeContributions: Double,
+    val interestPaid: Double,
+    val activeLoansRemaining: Double,
+    val grandTotalPortfolio: Double
+)
+
 sealed class AuthState {
     object Locked : AuthState()
     object Authenticating : AuthState()
@@ -36,21 +44,75 @@ sealed class AuthState {
 
 class SavingsViewModel(private val repository: GroupSavingsRepository) : ViewModel() {
 
-    // --- State Listeners ---
-    val contributions: StateFlow<List<Contribution>> = repository.contributions
+    // --- All Raw Database State Listeners ---
+    val allContributions: StateFlow<List<Contribution>> = repository.contributions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val loans: StateFlow<List<Loan>> = repository.loans
+    val allLoans: StateFlow<List<Loan>> = repository.loans
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val transactionRecords: StateFlow<List<TransactionRecord>> = repository.transactionRecords
+    val allTransactionRecords: StateFlow<List<TransactionRecord>> = repository.transactionRecords
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val totalSavingsPool: StateFlow<Double> = repository.totalContributionsSum
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+    // --- Village Bank State Selection ---
+    private val _selectedBank = MutableStateFlow("Matope Village Bank")
+    val selectedBank: StateFlow<String> = _selectedBank.asStateFlow()
 
-    val activeLoansOut: StateFlow<Double> = repository.activeLoansSum
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+    val availableBanks = listOf("Matope Village Bank", "Chichiri Savings Group", "Zomba Community Fund")
+
+    fun selectBank(bankName: String) {
+        _selectedBank.value = bankName
+    }
+
+    // --- Filtered Reactively State Listeners ---
+    val contributions: StateFlow<List<Contribution>> = combine(allContributions, _selectedBank) { list, bank ->
+        list.filter { it.groupId == bank }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val loans: StateFlow<List<Loan>> = combine(allLoans, _selectedBank) { list, bank ->
+        list.filter { it.groupId == bank }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val transactionRecords: StateFlow<List<TransactionRecord>> = combine(allTransactionRecords, _selectedBank) { list, bank ->
+        list.filter { it.groupId == bank }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val totalSavingsPool: StateFlow<Double> = contributions.map { list ->
+        list.sumOf { it.amount }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    val activeLoansOut: StateFlow<Double> = loans.map { list ->
+        list.filter { it.status == "Approved" }.sumOf { it.principalAmount }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    // --- Member Statistics & Portfolio Details (Cumulative stats per member in active bank) ---
+    val membersStats: StateFlow<List<MemberDetails>> = combine(contributions, loans) { contribs, loansList ->
+        val names = (contribs.map { it.memberName } + loansList.map { it.memberName })
+            .filter { it.isNotBlank() }
+            .distinct()
+        names.map { name ->
+            val totalContributions = contribs.filter { it.memberName.equals(name, ignoreCase = true) }.sumOf { it.amount }
+            val memberLoans = loansList.filter { it.memberName.equals(name, ignoreCase = true) }
+            val totalInterestPaid = memberLoans.sumOf { loan ->
+                val totalInterest = loan.principalAmount * (loan.interestRatePercent / 100.0)
+                val totalDue = loan.totalRepaymentAmount
+                if (totalDue > 0) {
+                    (loan.repaymentsPaid / totalDue) * totalInterest
+                } else {
+                    0.0
+                }
+            }
+            val remainingLoans = memberLoans.sumOf { it.remainingAmount }
+            val grandTotal = (totalContributions + totalInterestPaid) - remainingLoans
+            MemberDetails(
+                memberName = name,
+                cumulativeContributions = totalContributions,
+                interestPaid = totalInterestPaid,
+                activeLoansRemaining = remainingLoans,
+                grandTotalPortfolio = grandTotal
+            )
+        }.sortedBy { it.memberName }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- App Navigation State ---
     private val _currentTab = MutableStateFlow(0)
