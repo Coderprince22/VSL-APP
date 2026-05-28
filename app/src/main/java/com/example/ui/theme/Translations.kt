@@ -2,12 +2,12 @@ package com.example.ui.theme
 
 object Translations {
     private val en = mapOf(
-        "app_title" to "Matope Village",
+        "app_title" to "YSL APP",
         "total_savings" to "Total Savings Capital",
         "active_loans" to "Active Disbursed Loans",
         "dashboard" to "Dashboard",
         "contributions" to "Contributions",
-        "loans" to "Loans & Debts",
+        "loans" to "Loans",
         "logs" to "Ledger Logs",
         "sync_backup" to "Backup",
         "chat_support" to "AI Support",
@@ -39,12 +39,12 @@ object Translations {
     )
 
     private val local = mapOf(
-        "app_title" to "Bungwe la Matope",
+        "app_title" to "YSL APP",
         "total_savings" to "Ndalama Zonse Zosungidwa",
-        "active_loans" to "Mikongolo Imene Ikugwira Ntchito",
+        "active_loans" to "Ngongole Zimene Zikugwira Ntchito",
         "dashboard" to "Mwanzo",
         "contributions" to "Zopereka",
-        "loans" to "Mikongolo & Ngongole",
+        "loans" to "Ngongole",
         "logs" to "Zolembedwa",
         "sync_backup" to "Kusunga Mbiri",
         "chat_support" to "Thandizo la AI",

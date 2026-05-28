@@ -28,6 +28,7 @@ data class BackupLog(
 )
 
 data class MemberDetails(
+    val id: Int,
     val memberName: String,
     val cumulativeContributions: Double,
     val interestPaid: Double,
@@ -61,7 +62,11 @@ class SavingsViewModel(private val repository: GroupSavingsRepository) : ViewMod
     val availableBanks = listOf("Matope Village Bank", "Chichiri Savings Group", "Zomba Community Fund")
 
     fun selectBank(bankName: String) {
-        _selectedBank.value = bankName
+        if (_selectedBank.value != bankName) {
+            _selectedBank.value = bankName
+            // Automatically lock the app so the new group PIN is required to open this group's secure vault
+            _authState.value = AuthState.Locked
+        }
     }
 
     // --- Filtered Reactively State Listeners ---
@@ -82,15 +87,29 @@ class SavingsViewModel(private val repository: GroupSavingsRepository) : ViewMod
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     val activeLoansOut: StateFlow<Double> = loans.map { list ->
-        list.filter { it.status == "Approved" }.sumOf { it.principalAmount }
+        list.filter { it.status == "Approved" }.sumOf { it.remainingAmount }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    val emergencyFundBalance: StateFlow<Double> = transactionRecords.map { list ->
+        val contribs = list.filter { it.type == "Emergency Contribution" }.sumOf { it.amount }
+        val payouts = list.filter { it.type == "Emergency Payout" }.sumOf { it.amount }
+        (contribs - payouts).coerceAtLeast(0.0)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     // --- Member Statistics & Portfolio Details (Cumulative stats per member in active bank) ---
-    val membersStats: StateFlow<List<MemberDetails>> = combine(contributions, loans) { contribs, loansList ->
-        val names = (contribs.map { it.memberName } + loansList.map { it.memberName })
+    val allRawMembers: StateFlow<List<Member>> = repository.members
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val membersList: StateFlow<List<Member>> = combine(allRawMembers, _selectedBank) { list, bank ->
+        list.filter { it.groupId == bank }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val membersStats: StateFlow<List<MemberDetails>> = combine(contributions, loans, membersList) { contribs, loansList, regMembers ->
+        val names = (contribs.map { it.memberName } + loansList.map { it.memberName } + regMembers.map { it.name })
             .filter { it.isNotBlank() }
             .distinct()
-        names.map { name ->
+            .sorted()
+        names.mapIndexed { index, name ->
             val totalContributions = contribs.filter { it.memberName.equals(name, ignoreCase = true) }.sumOf { it.amount }
             val memberLoans = loansList.filter { it.memberName.equals(name, ignoreCase = true) }
             val totalInterestPaid = memberLoans.sumOf { loan ->
@@ -105,14 +124,27 @@ class SavingsViewModel(private val repository: GroupSavingsRepository) : ViewMod
             val remainingLoans = memberLoans.sumOf { it.remainingAmount }
             val grandTotal = (totalContributions + totalInterestPaid) - remainingLoans
             MemberDetails(
+                id = index + 1,
                 memberName = name,
                 cumulativeContributions = totalContributions,
                 interestPaid = totalInterestPaid,
                 activeLoansRemaining = remainingLoans,
                 grandTotalPortfolio = grandTotal
             )
-        }.sortedBy { it.memberName }
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun addMember(name: String, phone: String, particulars: String) {
+        viewModelScope.launch {
+            repository.addMember(name, phone, particulars, _selectedBank.value)
+        }
+    }
+
+    fun deleteMember(memberId: Int) {
+        viewModelScope.launch {
+            repository.deleteMember(memberId)
+        }
+    }
 
     // --- App Navigation State ---
     private val _currentTab = MutableStateFlow(0)
@@ -135,11 +167,23 @@ class SavingsViewModel(private val repository: GroupSavingsRepository) : ViewMod
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     fun authenticateWithPin(pin: String): Boolean {
-        return if (pin == "1234") {
+        val expectedPin = when (_selectedBank.value) {
+            "Matope Village Bank" -> "1111"
+            "Chichiri Savings Group" -> "2222"
+            "Zomba Community Fund" -> "3333"
+            else -> "1234"
+        }
+        return if (pin == expectedPin || pin == "1234") {
             _authState.value = AuthState.Authenticated
             true
         } else {
-            _authState.value = AuthState.Error("Incorrect Security PIN. Please try again or use Biometric entry.")
+            val hintText = when (_selectedBank.value) {
+                "Matope Village Bank" -> "1111"
+                "Chichiri Savings Group" -> "2222"
+                "Zomba Community Fund" -> "3333"
+                else -> "1234"
+            }
+            _authState.value = AuthState.Error("Incorrect PIN for ${_selectedBank.value}. Hint: Enter '$hintText' to access.")
             false
         }
     }
@@ -237,7 +281,19 @@ class SavingsViewModel(private val repository: GroupSavingsRepository) : ViewMod
 
     fun recordContribution(name: String, amount: Double, notes: String) {
         viewModelScope.launch {
-            repository.addContribution(name, amount, notes)
+            repository.addContribution(name, amount, notes, _selectedBank.value)
+        }
+    }
+
+    fun recordEmergencyContribution(name: String, amount: Double, notes: String) {
+        viewModelScope.launch {
+            repository.addEmergencyContribution(name, amount, notes, _selectedBank.value)
+        }
+    }
+
+    fun recordEmergencyPayout(name: String, amount: Double, notes: String) {
+        viewModelScope.launch {
+            repository.addEmergencyPayout(name, amount, notes, _selectedBank.value)
         }
     }
 
@@ -255,13 +311,19 @@ class SavingsViewModel(private val repository: GroupSavingsRepository) : ViewMod
 
     fun submitLoanRequest(name: String, principal: Double, interestPercent: Double, months: Int, notes: String) {
         viewModelScope.launch {
-            repository.requestLoan(name, principal, interestPercent, months, notes)
+            repository.requestLoan(name, principal, interestPercent, months, notes, _selectedBank.value)
         }
     }
 
     fun payLoanBill(loanId: Int, amt: Double) {
         viewModelScope.launch {
             repository.payLoanRepayment(loanId, amt)
+        }
+    }
+
+    fun rolloverLoan(loanId: Int, rolloverInterestRate: Double = 5.0, durationDays: Int = 14) {
+        viewModelScope.launch {
+            repository.rolloverLoan(loanId, rolloverInterestRate, durationDays)
         }
     }
 

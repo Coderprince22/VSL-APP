@@ -47,3 +47,12 @@ data class TransactionRecord(
     val hashSignature: String = "", // cryptographic-like verification indicator
     val groupId: String = "Matope Village Bank"
 )
+
+@Entity(tableName = "members")
+data class Member(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val name: String,
+    val phoneNumber: String = "",
+    val particulars: String = "", // e.g., "Village: Matope, Next of Kin: Phiri"
+    val groupId: String = "Matope Village Bank"
+)

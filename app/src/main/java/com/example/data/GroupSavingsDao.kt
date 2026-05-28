@@ -47,4 +47,17 @@ interface GroupSavingsDao {
 
     @Query("DELETE FROM transaction_records")
     suspend fun clearTransactionRecords()
+
+    // --- Members ---
+    @Query("SELECT * FROM members ORDER BY name ASC")
+    fun getAllMembers(): Flow<List<Member>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMember(member: Member): Long
+
+    @Query("DELETE FROM members WHERE id = :memberId")
+    suspend fun deleteMemberById(memberId: Int)
+
+    @Query("DELETE FROM members")
+    suspend fun clearMembers()
 }

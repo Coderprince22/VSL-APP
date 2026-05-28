@@ -14,6 +14,21 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
 
     val totalContributionsSum: Flow<Double> = dao.getTotalContributions().map { it ?: 0.0 }
     val activeLoansSum: Flow<Double> = dao.getActiveLoansSum().map { it ?: 0.0 }
+    val members: Flow<List<Member>> = dao.getAllMembers()
+
+    suspend fun addMember(name: String, phoneNumber: String, particulars: String, groupId: String = "Matope Village Bank") {
+        val member = Member(
+            name = name,
+            phoneNumber = phoneNumber,
+            particulars = particulars,
+            groupId = groupId
+        )
+        dao.insertMember(member)
+    }
+
+    suspend fun deleteMember(memberId: Int) {
+        dao.deleteMemberById(memberId)
+    }
 
     // Utility to encrypt or generate secure visual signature
     private fun generateSecureSignature(type: String, name: String, amount: Double, timestamp: Long): String {
@@ -54,8 +69,41 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
         dao.insertTransactionRecord(record)
     }
 
+    suspend fun addEmergencyContribution(memberName: String, amount: Double, notes: String, groupId: String = "Matope Village Bank") {
+        val timestamp = System.currentTimeMillis()
+        val signature = generateSecureSignature("Emergency Contribution", memberName, amount, timestamp)
+        val record = TransactionRecord(
+            type = "Emergency Contribution",
+            memberName = memberName,
+            amount = amount,
+            timestamp = timestamp,
+            description = "Contributed $amount to Emergency Fund (Thumba la Dzidzidzi). Notes: $notes",
+            isEncrypted = true,
+            hashSignature = signature,
+            groupId = groupId
+        )
+        dao.insertTransactionRecord(record)
+    }
+
+    suspend fun addEmergencyPayout(memberName: String, amount: Double, notes: String, groupId: String = "Matope Village Bank") {
+        val timestamp = System.currentTimeMillis()
+        val signature = generateSecureSignature("Emergency Payout", memberName, amount, timestamp)
+        val record = TransactionRecord(
+            type = "Emergency Payout",
+            memberName = memberName,
+            amount = amount,
+            timestamp = timestamp,
+            description = "Disbursed $amount from Emergency Fund (Thumba la Dzidzidzi) for support. Notes: $notes",
+            isEncrypted = true,
+            hashSignature = signature,
+            groupId = groupId
+        )
+        dao.insertTransactionRecord(record)
+    }
+
     suspend fun requestLoan(memberName: String, principalAmount: Double, interestPercent: Double, durationMonths: Int, notes: String, groupId: String = "Matope Village Bank") {
-        val dueDate = System.currentTimeMillis() + (durationMonths * 30L * 24 * 60 * 60 * 1000)
+        val durationDays = if (durationMonths <= 0) 14 else (durationMonths * 30)
+        val dueDate = System.currentTimeMillis() + (durationDays * 24L * 60 * 60 * 1000)
         val loan = Loan(
             memberName = memberName,
             principalAmount = principalAmount,
@@ -162,6 +210,42 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
         }
     }
 
+    suspend fun rolloverLoan(loanId: Int, rolloverInterestRate: Double = 5.0, durationDays: Int = 14) {
+        val loan = dao.getLoanById(loanId) ?: return
+        if (loan.status == "Approved" || loan.status == "Overdue") {
+            val unpaidAmount = loan.remainingAmount
+            // The remaining amount (principal + interest minus any repayments) becomes the new principal.
+            // Reset repaymentsPaid to 0.0 for the new rollover period.
+            // Update the dueDate to +durationDays (e.g., 2 weeks = 14 days, or custom).
+            val newDueDate = System.currentTimeMillis() + (durationDays * 24L * 60 * 60 * 1000)
+            val updated = loan.copy(
+                principalAmount = unpaidAmount,
+                interestRatePercent = rolloverInterestRate,
+                repaymentDurationMonths = if (durationDays == 14) 0 else (durationDays / 30),
+                repaymentsPaid = 0.0,
+                dueDate = newDueDate,
+                status = "Approved",
+                notes = "Loan rolled over. Previous unpaid dues of ${loan.remainingAmount} became the new principal with ${rolloverInterestRate}% interest."
+            )
+            dao.updateLoan(updated)
+
+            // Log event in transactions
+            val timestamp = System.currentTimeMillis()
+            val signature = generateSecureSignature("Loan Rollover", loan.memberName, unpaidAmount, timestamp)
+            val record = TransactionRecord(
+                type = "Loan Rollover",
+                memberName = loan.memberName,
+                amount = unpaidAmount,
+                timestamp = timestamp,
+                description = "Loan #$loanId rolled over. New Principal: $unpaidAmount, Interest: ${rolloverInterestRate}%. Due in $durationDays days.",
+                isEncrypted = true,
+                hashSignature = signature,
+                groupId = loan.groupId
+            )
+            dao.insertTransactionRecord(record)
+        }
+    }
+
     suspend fun toggleReminder(loanId: Int) {
         val loan = dao.getLoanById(loanId) ?: return
         val updated = loan.copy(isReminderEnabled = !loan.isReminderEnabled)
@@ -172,6 +256,14 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
         dao.clearContributions()
         dao.clearLoans()
         dao.clearTransactionRecords()
+        dao.clearMembers()
+
+        // Seed Members for Matope Village Bank
+        addMember("Mariam Phiri", "+265888123456", "Village: Matope, ID: MP-991, Next of Kin: John Phiri (Husband)", "Matope Village Bank")
+        addMember("Chiku Banda", "+265999881122", "Village: Matope, ID: CB-842, Next of Kin: Sarah Banda (Sister)", "Matope Village Bank")
+        addMember("John Mwiyo", "+265881442211", "Village: Matope, ID: JM-332, Next of Kin: Helen Mwiyo (Wife)", "Matope Village Bank")
+        addMember("Grace Chiume", "+265882334455", "Village: Matope, ID: GC-411, Next of Kin: Frank Chiume (Brother)", "Matope Village Bank")
+        addMember("Emily Mkandawire", "+265991234567", "Village: Matope, ID: EM-701, Next of Kin: Gift Mkandawire (Son)", "Matope Village Bank")
 
         // 1. Seed Matope Village Bank
         addContribution("Mariam Phiri", 250.00, "Monthly contributions for May", "Matope Village Bank")
@@ -180,17 +272,37 @@ class GroupSavingsRepository(private val dao: GroupSavingsDao) {
         addContribution("Grace Chiume", 400.00, "Early contribution for June", "Matope Village Bank")
         requestLoan("Chiku Banda", 500.00, 10.0, 3, "For seed fertilizer purchase", "Matope Village Bank")
         requestLoan("Emily Mkandawire", 1000.00, 8.0, 4, "SME shop inventory expansion", "Matope Village Bank")
+        
+        // Seed Emergency Fund (Thumba la Dzidzidzi)
+        addEmergencyContribution("Mariam Phiri", 50.00, "Yearly central reserve fee", "Matope Village Bank")
+        addEmergencyContribution("Chiku Banda", 50.00, "May crisis reserve contribution", "Matope Village Bank")
+        addEmergencyContribution("John Mwiyo", 50.00, "Emergency pool contribution", "Matope Village Bank")
+        addEmergencyPayout("John Mwiyo", 30.00, "Medical clinic support fee", "Matope Village Bank")
 
         // 2. Seed Chichiri Savings Group
+        addMember("Chimwemwe Mwale", "+265888252525", "Village: Chichiri, ID: CW-012, Kin: Linda Mwale", "Chichiri Savings Group")
+        addMember("Limbani Gondwe", "+265999334411", "Village: Chichiri, ID: LG-505, Kin: Janet Gondwe", "Chichiri Savings Group")
+        addMember("Towela Nyirenda", "+265881002299", "Village: Chichiri, ID: TN-311, Kin: Alice Nyirenda", "Chichiri Savings Group")
+
         addContribution("Chimwemwe Mwale", 450.00, "Initial savings", "Chichiri Savings Group")
         addContribution("Limbani Gondwe", 350.00, "Group contribution", "Chichiri Savings Group")
         addContribution("Towela Nyirenda", 500.00, "May saving shares", "Chichiri Savings Group")
         requestLoan("Limbani Gondwe", 300.00, 12.0, 2, "School fees for children", "Chichiri Savings Group")
+        
+        addEmergencyContribution("Chimwemwe Mwale", 60.00, "Chichiri emergency start pool", "Chichiri Savings Group")
+        addEmergencyContribution("Towela Nyirenda", 60.00, "Emergency crisis help fee", "Chichiri Savings Group")
 
         // 3. Seed Zomba Community Fund
+        addMember("Yamikani Banda", "+265882141414", "Village: Zomba, ID: YB-902, Kin: Chiza Banda", "Zomba Community Fund")
+        addMember("Blessings Chimoyo", "+265995556677", "Village: Zomba, ID: BC-112, Kin: Maggie Chimoyo", "Zomba Community Fund")
+        addMember("Chisomo Phiri", "+265884443322", "Village: Zomba, ID: CP-007, Kin: Peter Phiri", "Zomba Community Fund")
+
         addContribution("Yamikani Banda", 600.00, "Zomba share investment", "Zomba Community Fund")
         addContribution("Blessings Chimoyo", 800.00, "Large investment share", "Zomba Community Fund")
         addContribution("Chisomo Phiri", 400.00, "May regular share", "Zomba Community Fund")
         requestLoan("Chisomo Phiri", 200.00, 15.0, 1, "Water pipe installation", "Zomba Community Fund")
+        
+        addEmergencyContribution("Yamikani Banda", 80.00, "Zomba trust emergency start", "Zomba Community Fund")
+        addEmergencyPayout("Blessings Chimoyo", 40.00, "Disaster roof repair assistance", "Zomba Community Fund")
     }
 }
