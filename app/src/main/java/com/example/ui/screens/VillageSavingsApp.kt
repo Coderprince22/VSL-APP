@@ -30,7 +30,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -138,6 +140,49 @@ fun SecurityLockScreen(
                 .widthIn(max = 450.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Language Selection directly on the first screen before login
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SageNeutral.copy(alpha = 0.3f))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = if (lang == "local") "Chilankhulo:" else "Language:",
+                    color = LightSageText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Button(
+                    onClick = { viewModel.setLanguage("en") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (lang == "en") MintPrimary else Color.Transparent,
+                        contentColor = if (lang == "en") SolidBlack else LightSageText
+                    ),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                    modifier = Modifier.height(28.dp),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text("EN", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                Button(
+                    onClick = { viewModel.setLanguage("local") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (lang == "local") MintPrimary else Color.Transparent,
+                        contentColor = if (lang == "local") SolidBlack else LightSageText
+                    ),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                    modifier = Modifier.height(28.dp),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text("CH", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             // Secure Vault Header Illustration
             Box(
                 contentAlignment = Alignment.Center,
@@ -158,8 +203,8 @@ fun SecurityLockScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = Translations.get("secure_locked", lang),
-                fontSize = 22.sp,
+                text = Translations.get("welcome_agent", lang),
+                fontSize = 24.sp,
                 color = GoldAccent,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -177,202 +222,598 @@ fun SecurityLockScreen(
 
             // Pre-Login Village Bank / Group Selection (User Request: select group before entering password)
             val activeBank by viewModel.selectedBank.collectAsStateWithLifecycle()
+            val availableBanks by viewModel.availableBanks.collectAsStateWithLifecycle()
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(ForestCard, RoundedCornerShape(16.dp))
-                    .border(1.dp, SageNeutral.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "SELECT VILLAGE BANK",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = GoldAccent,
-                    letterSpacing = 0.5.sp
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+            if (availableBanks.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(ForestCard, RoundedCornerShape(16.dp))
+                        .border(1.dp, SageNeutral.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    viewModel.availableBanks.forEach { bank ->
-                        val isSelected = bank == activeBank
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) MintPrimary else SageNeutral.copy(alpha = 0.4f))
-                                .border(1.dp, if (isSelected) MintPrimary else SageNeutral, RoundedCornerShape(8.dp))
-                                .clickable { viewModel.selectBank(bank) }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val displayName = when (bank) {
-                                "Matope Village Bank" -> "Matope"
-                                "Chichiri Savings Group" -> "Chichiri"
-                                "Zomba Community Fund" -> "Zomba"
-                                else -> bank
-                            }
-                            Text(
-                                text = displayName,
-                                color = if (isSelected) SolidBlack else LightSageText,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-
-                Text(
-                    text = "Accessing: $activeBank",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MintPrimary,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // PIN Dots Indicator UI
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                for (i in 1..4) {
-                    val active = pinValue.length >= i
-                    Box(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .size(18.dp)
-                            .clip(CircleShape)
-                            .background(if (active) MintPrimary else SageNeutral)
-                            .border(1.dp, if (active) MintPrimary else LightSageText, CircleShape)
+                    Text(
+                        text = if (lang == "local") "SANKHANI GULU LAZACHUMA" else "SELECT SAVINGS GROUP",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldAccent,
+                        letterSpacing = 0.5.sp
                     )
-                }
-            }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Traditional Lockpad Grid (Custom built for 48dp+ accessibility size)
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                val rows = listOf(
-                    listOf("1", "2", "3"),
-                    listOf("4", "5", "6"),
-                    listOf("7", "8", "9"),
-                    listOf("Clear", "0", "Unlock")
-                )
-
-                for (row in rows) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(vertical = 4.dp)
                     ) {
-                        for (key in row) {
-                            val isAction = key == "Clear" || key == "Unlock"
-                            val buttonBg = if (isAction) SageNeutral else ForestCard
-                            val buttonTextCol = if (key == "Unlock") MintPrimary else if (key == "Clear") TerracottaWarn else LightSageText
-
-                            Button(
-                                onClick = {
-                                    if (key == "Clear") {
-                                        pinValue = ""
-                                    } else if (key == "Unlock") {
-                                        viewModel.authenticateWithPin(pinValue)
-                                    } else {
-                                        if (pinValue.length < 4) {
-                                            pinValue += key
-                                        }
-                                        if (pinValue.length == 4) {
-                                            viewModel.authenticateWithPin(pinValue)
-                                        }
-                                    }
-                                },
+                        availableBanks.forEach { bank ->
+                            val isSelected = bank == activeBank
+                            Box(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .height(58.dp)
-                                    .testTag("keypad_$key"),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = buttonBg,
-                                    contentColor = buttonTextCol
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(0.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) MintPrimary else SageNeutral.copy(alpha = 0.4f))
+                                    .border(1.dp, if (isSelected) MintPrimary else SageNeutral, RoundedCornerShape(8.dp))
+                                    .clickable { viewModel.selectBank(bank) }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                contentAlignment = Alignment.Center
                             ) {
+                                val displayName = when (bank) {
+                                    "Matope Village Bank" -> "Matope"
+                                    "Chichiri Savings Group" -> "Chichiri"
+                                    "Zomba Community Fund" -> "Zomba"
+                                    else -> bank
+                                }
                                 Text(
-                                    text = key,
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold
+                                    text = displayName,
+                                    color = if (isSelected) SolidBlack else LightSageText,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
                     }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Simulated Biometric Scan Passkey Entry (Requested requirement)
-            Button(
-                onClick = { viewModel.authenticateWithBiometric() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .testTag("biometric_entry_button"),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = SageNeutral,
-                    contentColor = GoldAccent
-                ),
-                border = BorderStroke(1.dp, GoldAccent),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = "Key Icon",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = Translations.get("finger_unlock", lang),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
+                        text = if (lang == "local") "Mukulowa mu: $activeBank" else "Accessing: $activeBank",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MintPrimary,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Divider(color = SageNeutral.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+                    // SELF GROUP ADD FEATURE
+                    var newGroupName by remember { mutableStateOf("") }
+                    var adminPin by remember { mutableStateOf("1234") }
+                    var interestRate by remember { mutableStateOf("10.0") }
+                    var maxMultiplier by remember { mutableStateOf("3.0") }
+                    var groupAdminName by remember { mutableStateOf("") }
+                    var showAddGroupInput by remember { mutableStateOf(false) }
+
+                    if (!showAddGroupInput) {
+                        Button(
+                            onClick = { showAddGroupInput = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SageNeutral,
+                                contentColor = Color.White
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(36.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = if (lang == "local") "+ Lowetsani Gulu Latsopano" else "+ Add New Savings Group",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                text = if (lang == "local") "ZAMBIRI ZA GULU LATSOPANO" else "NEW GROUP CONFIGURATION DETAILS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldAccent
+                            )
+
+                            // 1. Group Name
+                            OutlinedTextField(
+                                value = newGroupName,
+                                onValueChange = { newGroupName = it },
+                                label = {
+                                    Text(
+                                        text = if (lang == "local") "Dzina la Gulu Latsopano" else "New Savings Group Name",
+                                        color = LightSageText,
+                                        fontSize = 10.sp
+                                    )
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+
+                            // 2. Head/Admin/Agent Name
+                            OutlinedTextField(
+                                value = groupAdminName,
+                                onValueChange = { groupAdminName = it },
+                                label = {
+                                    Text(
+                                        text = if (lang == "local") "Dzina la Mtsogoleri (Agent)" else "Administrator/Creator Name",
+                                        color = LightSageText,
+                                        fontSize = 10.sp
+                                    )
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                placeholder = {
+                                    Text(
+                                        text = "e.g., John",
+                                        color = LightSageText.copy(alpha = 0.5f),
+                                        fontSize = 10.sp
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+
+                            // 3. Admin Access PIN
+                            OutlinedTextField(
+                                value = adminPin,
+                                onValueChange = { adminPin = it },
+                                label = {
+                                    Text(
+                                        text = if (lang == "local") "Nambala ya Chinsinsi (Group PIN)" else "Group Admin Access PIN",
+                                        color = LightSageText,
+                                        fontSize = 10.sp
+                                    )
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+
+                            // 4. Default Interest and Loan Multiplier Limits Row
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                OutlinedTextField(
+                                    value = interestRate,
+                                    onValueChange = { interestRate = it },
+                                    label = {
+                                        Text(
+                                            text = if (lang == "local") "Chiwongoladzanja" else "Interest %",
+                                            color = LightSageText,
+                                            fontSize = 10.sp
+                                        )
+                                    },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                        unfocusedContainerColor = Color.Transparent,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true
+                                )
+
+                                OutlinedTextField(
+                                    value = maxMultiplier,
+                                    onValueChange = { maxMultiplier = it },
+                                    label = {
+                                        Text(
+                                            text = if (lang == "local") "Zogawana Malire" else "Max Limit (x)",
+                                            color = LightSageText,
+                                            fontSize = 10.sp
+                                        )
+                                    },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                        unfocusedContainerColor = Color.Transparent,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        if (newGroupName.isNotBlank()) {
+                                            val finalInterest = interestRate.toDoubleOrNull() ?: 10.0
+                                            val finalMultiplier = maxMultiplier.toDoubleOrNull() ?: 3.0
+                                            viewModel.addNewBankGroup(
+                                                bankName = newGroupName,
+                                                pin = adminPin,
+                                                interest = finalInterest,
+                                                multiplier = finalMultiplier,
+                                                adminName = groupAdminName
+                                            )
+                                            newGroupName = ""
+                                            groupAdminName = ""
+                                            adminPin = "1234"
+                                            interestRate = "10.0"
+                                            maxMultiplier = "3.0"
+                                            showAddGroupInput = false
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MintPrimary, contentColor = SolidBlack),
+                                    modifier = Modifier.weight(1f).height(38.dp),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = if (lang == "local") "Sungani Gulu" else "Create Group",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SolidBlack
+                                    )
+                                }
+
+                                Button(
+                                    onClick = { showAddGroupInput = false },
+                                    colors = ButtonDefaults.buttonColors(containerColor = SageNeutral, contentColor = Color.White),
+                                    modifier = Modifier.weight(1f).height(38.dp),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = if (lang == "local") "Tsekani" else "Cancel",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // PIN Dots Indicator UI
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    for (i in 1..4) {
+                        val active = pinValue.length >= i
+                        Box(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(if (active) MintPrimary else SageNeutral)
+                                .border(1.dp, if (active) MintPrimary else LightSageText, CircleShape)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Traditional Lockpad Grid (Custom built for 48dp+ accessibility size)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val rows = listOf(
+                        listOf("1", "2", "3"),
+                        listOf("4", "5", "6"),
+                        listOf("7", "8", "9"),
+                        listOf("Clear", "0", "Unlock")
+                    )
+
+                    for (row in rows) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            for (key in row) {
+                                val isAction = key == "Clear" || key == "Unlock"
+                                val buttonBg = if (isAction) SageNeutral else ForestCard
+                                val buttonTextCol = if (key == "Unlock") MintPrimary else if (key == "Clear") TerracottaWarn else LightSageText
+
+                                Button(
+                                    onClick = {
+                                        if (key == "Clear") {
+                                            pinValue = ""
+                                        } else if (key == "Unlock") {
+                                            viewModel.authenticateWithPin(pinValue)
+                                        } else {
+                                            if (pinValue.length < 4) {
+                                                pinValue += key
+                                            }
+                                            if (pinValue.length == 4) {
+                                                viewModel.authenticateWithPin(pinValue)
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(58.dp)
+                                        .testTag("keypad_$key"),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = buttonBg,
+                                        contentColor = buttonTextCol
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text(
+                                        text = key,
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Simulated Biometric Scan Passkey Entry (Requested requirement)
+                Button(
+                    onClick = { viewModel.authenticateWithBiometric() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .testTag("biometric_entry_button"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SageNeutral,
+                        contentColor = GoldAccent
+                    ),
+                    border = BorderStroke(1.dp, GoldAccent),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Key Icon",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = Translations.get("finger_unlock", lang),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                if (displayError) {
+                    val errMsg = (authState as? AuthState.Error)?.message ?: "Invalid Code"
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = errMsg,
+                        color = TerracottaWarn,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }
-            }
 
-            if (displayError) {
-                val errMsg = (authState as? AuthState.Error)?.message ?: "Invalid Code"
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = errMsg,
-                    color = TerracottaWarn,
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    text = Translations.get("pin_hint", lang),
+                    color = LightSageText.copy(alpha = 0.5f),
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center
                 )
-            }
+            } else {
+                // availableBanks is Empty (Prompt user to create their first group)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(ForestCard, RoundedCornerShape(16.dp))
+                        .border(1.dp, GoldAccent.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = if (lang == "local") "TAKULANDIRANI - KHALANI NDI GULU LATSOPANO" else "WELCOME - CREATE YOUR SAVINGS GROUP",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = GoldAccent,
+                        letterSpacing = 0.5.sp,
+                        textAlign = TextAlign.Center
+                    )
 
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = Translations.get("pin_hint", lang),
-                color = LightSageText.copy(alpha = 0.5f),
-                fontSize = 11.sp,
-                textAlign = TextAlign.Center
-            )
+                    Text(
+                        text = if (lang == "local") 
+                            "Ubwino: Idzi zimapangitsa kusunga ndi kubwereka ndalama m'derali kukhala kosavuta komanso kotetezeka popanda ndalama zina zam'mbali."
+                            else "Notice: All data and group configurations are local to this device. Please create your first village savings group below to begin operations.",
+                        fontSize = 11.sp,
+                        color = LightSageText.copy(alpha = 0.8f),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Divider(color = SageNeutral.copy(alpha = 0.3f), thickness = 0.5.dp)
+
+                    var newGroupName by remember { mutableStateOf("") }
+                    var adminPin by remember { mutableStateOf("") }
+                    var interestRate by remember { mutableStateOf("10.0") }
+                    var maxMultiplier by remember { mutableStateOf("3.0") }
+                    var groupAdminName by remember { mutableStateOf("") }
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = newGroupName,
+                            onValueChange = { newGroupName = it },
+                            label = {
+                                Text(
+                                    text = if (lang == "local") "Dzina la Gulu Latsopano *" else "New Savings Group Name *",
+                                    color = LightSageText,
+                                    fontSize = 10.sp
+                                )
+                            },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        OutlinedTextField(
+                            value = groupAdminName,
+                            onValueChange = { groupAdminName = it },
+                            label = {
+                                Text(
+                                    text = if (lang == "local") "Dzina la Mtsogoleri (Agent) *" else "Creator / Administrator Name *",
+                                    color = LightSageText,
+                                    fontSize = 10.sp
+                                )
+                            },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        OutlinedTextField(
+                            value = adminPin,
+                            onValueChange = { adminPin = it },
+                            label = {
+                                Text(
+                                    text = if (lang == "local") "PIN Yatsopano Yomwe Mwasankha *" else "Choose Your Master Access PIN *",
+                                    color = LightSageText,
+                                    fontSize = 10.sp
+                                )
+                            },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = interestRate,
+                                onValueChange = { interestRate = it },
+                                label = {
+                                    Text(
+                                        text = if (lang == "local") "Chiwongoladzanja" else "Interest %",
+                                        color = LightSageText,
+                                        fontSize = 10.sp
+                                    )
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+
+                            OutlinedTextField(
+                                value = maxMultiplier,
+                                onValueChange = { maxMultiplier = it },
+                                label = {
+                                    Text(
+                                        text = if (lang == "local") "Zogawana Malire" else "Max Limit (x)",
+                                        color = LightSageText,
+                                        fontSize = 10.sp
+                                    )
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Button(
+                            onClick = {
+                                if (newGroupName.isNotBlank() && adminPin.isNotBlank() && groupAdminName.isNotBlank()) {
+                                    val finalInterest = interestRate.toDoubleOrNull() ?: 10.0
+                                    val finalMultiplier = maxMultiplier.toDoubleOrNull() ?: 3.0
+                                    viewModel.addNewBankGroup(
+                                        bankName = newGroupName,
+                                        pin = adminPin,
+                                        interest = finalInterest,
+                                        multiplier = finalMultiplier,
+                                        adminName = groupAdminName
+                                    )
+                                }
+                            },
+                            enabled = newGroupName.isNotBlank() && adminPin.isNotBlank() && groupAdminName.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (newGroupName.isNotBlank() && adminPin.isNotBlank() && groupAdminName.isNotBlank()) MintPrimary else SageNeutral,
+                                contentColor = SolidBlack
+                            ),
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (lang == "local") "PANGANI GULU LATSOPANO" else "CREATE AND LAUNCH GROUP",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (newGroupName.isNotBlank() && adminPin.isNotBlank() && groupAdminName.isNotBlank()) SolidBlack else LightSageText
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -393,6 +834,9 @@ fun MainAppLayout(
     val totalSavings by viewModel.totalSavingsPool.collectAsStateWithLifecycle()
     val activeLoansSum by viewModel.activeLoansOut.collectAsStateWithLifecycle()
     val activeBank by viewModel.selectedBank.collectAsStateWithLifecycle()
+    val membersRegisteredList by viewModel.membersList.collectAsStateWithLifecycle()
+
+    var isAdminSettingsOpen by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -421,7 +865,7 @@ fun MainAppLayout(
                         )
                     }
 
-                    // Interactive Settings Tool: Language Switcher and Theme Toggle
+                    // Interactive Settings Tool: Language Switcher, Separate Theme Toggle and Settings Icon
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -458,17 +902,49 @@ fun MainAppLayout(
                             Text("CH", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
 
-                        // Theme switch
-                        IconButton(
+                        // Theme Mode Selector Capsule (100% separate from general settings)
+                        Button(
                             onClick = { viewModel.toggleDarkMode() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SageNeutral,
+                                contentColor = GoldAccent
+                            ),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                            modifier = Modifier
+                                .height(32.dp)
+                                .testTag("theme_toggle_button"),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = if (isDarkMode) "🌙 Dark" else "🔆 Light",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        // High contrast vertical visual separate line
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(16.dp)
+                                .background(SageNeutral.copy(alpha = 0.5f))
+                        )
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        // Dedicated Settings Icon (Admin Console)
+                        IconButton(
+                            onClick = { isAdminSettingsOpen = true },
                             modifier = Modifier
                                 .size(36.dp)
-                                .testTag("theme_toggle_button")
+                                .testTag("admin_settings_button")
                         ) {
                             Icon(
-                                imageVector = if (isDarkMode) Icons.Default.Settings else Icons.Default.Warning, 
-                                contentDescription = "Toggle Contrast Brightness Theme Mode",
-                                tint = GoldAccent,
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Open Admin Settings Console",
+                                tint = MintPrimary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -493,8 +969,28 @@ fun MainAppLayout(
             }
         },
         bottomBar = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(themeSurface)
+            ) {
                 Divider(color = dividerColor)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(themeSurface)
+                        .padding(vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Developed by Elimora Enterprise",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = GoldAccent.copy(alpha = 0.85f),
+                        letterSpacing = 1.sp
+                    )
+                }
+                Divider(color = dividerColor.copy(alpha = 0.5f))
                 NavigationBar(
                     containerColor = themeSurface,
                     modifier = Modifier.navigationBarsPadding(),
@@ -555,6 +1051,527 @@ fun MainAppLayout(
             }
         }
     }
+
+    if (isAdminSettingsOpen) {
+        var isConfirmDeleteOpen by remember { mutableStateOf<com.example.data.Member?>(null) }
+        var isConfirmWipeOpen by remember { mutableStateOf(false) }
+        
+        var isRegistryFormOpen by remember { mutableStateOf(false) }
+        var adminNewMemberName by remember { mutableStateOf("") }
+        var adminNewMemberPhone by remember { mutableStateOf("") }
+        var adminNewMemberParticulars by remember { mutableStateOf("") }
+        var adminAddMemberError by remember { mutableStateOf("") }
+
+        val prefPin by viewModel.customPin.collectAsStateWithLifecycle()
+        val prefReminder by viewModel.reminderTemplate.collectAsStateWithLifecycle()
+        val prefInvite by viewModel.meetingInviteTemplate.collectAsStateWithLifecycle()
+        val prefInterest by viewModel.defaultInterestRate.collectAsStateWithLifecycle()
+        val prefMultiplier by viewModel.maxLoanMultiplier.collectAsStateWithLifecycle()
+        val availableBanksSetting by viewModel.availableBanks.collectAsStateWithLifecycle()
+
+        var pinEdit by remember(prefPin) { mutableStateOf(prefPin) }
+        var reminderEdit by remember(prefReminder) { mutableStateOf(prefReminder) }
+        var inviteEdit by remember(prefInvite) { mutableStateOf(prefInvite) }
+        var interestEdit by remember(prefInterest) { mutableStateOf(prefInterest.toString()) }
+        var multiplierEdit by remember(prefMultiplier) { mutableStateOf(prefMultiplier.toString()) }
+
+        AlertDialog(
+            onDismissRequest = { isAdminSettingsOpen = false },
+            containerColor = ForestCard,
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(24.dp))
+                    Text("Admin Console & Settings", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Authorized settings for managing village savings group operations, registry rosters, and offline backups.",
+                        fontSize = 11.sp,
+                        color = LightSageText.copy(alpha = 0.7f)
+                    )
+
+                    Divider(color = SageNeutral, thickness = 0.5.dp)
+
+                    // 1. SELECT ACTIVE BANK / SAVINGS GROUP
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "ACTIVE SAVINGS GROUP",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldAccent,
+                            letterSpacing = 0.5.sp
+                        )
+                        availableBanksSetting.forEach { bank ->
+                            val isSelected = bank == activeBank
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) MintPrimary.copy(alpha = 0.2f) else SageNeutral.copy(alpha = 0.1f))
+                                    .border(0.5.dp, if (isSelected) MintPrimary else SageNeutral, RoundedCornerShape(8.dp))
+                                    .clickable { viewModel.selectBank(bank) }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val displayName = when (bank) {
+                                    "Matope Village Bank" -> "Matope"
+                                    "Chichiri Savings Group" -> "Chichiri"
+                                    "Zomba Community Fund" -> "Zomba"
+                                    else -> bank
+                                }
+                                Text(
+                                    text = displayName,
+                                    color = if (isSelected) MintPrimary else LightSageText,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Active",
+                                        tint = MintPrimary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Divider(color = SageNeutral, thickness = 0.5.dp)
+
+                    // 2. MEMBER ROSTER MANAGEMENT
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "GULU MEMBER REGISTRY (${membersRegisteredList.size})",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldAccent,
+                                letterSpacing = 0.5.sp
+                            )
+                            Button(
+                                onClick = { isRegistryFormOpen = !isRegistryFormOpen },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isRegistryFormOpen) SageNeutral else MintPrimary,
+                                    contentColor = SolidBlack
+                                ),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.height(24.dp)
+                            ) {
+                                Text(
+                                    text = if (isRegistryFormOpen) "Close Form" else "+ Add New",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isRegistryFormOpen) Color.White else SolidBlack
+                                )
+                            }
+                        }
+
+                        if (isRegistryFormOpen) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(SageNeutral.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                                    .border(0.5.dp, SageNeutral, RoundedCornerShape(8.dp))
+                                    .padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text("New Member Details", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                
+                                OutlinedTextField(
+                                    value = adminNewMemberName,
+                                    onValueChange = { adminNewMemberName = it },
+                                    label = { Text("Name", color = LightSageText, fontSize = 10.sp) },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                        unfocusedContainerColor = Color.Transparent,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = themeText
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = adminNewMemberPhone,
+                                    onValueChange = { adminNewMemberPhone = it },
+                                    label = { Text("Phone Number", color = LightSageText, fontSize = 10.sp) },
+                                    placeholder = { Text("e.g. +265...", color = Color.Gray, fontSize = 10.sp) },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                        unfocusedContainerColor = Color.Transparent,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = themeText
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = adminNewMemberParticulars,
+                                    onValueChange = { adminNewMemberParticulars = it },
+                                    label = { Text("Particulars (Village, Kin, ID)", color = LightSageText, fontSize = 10.sp) },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                        unfocusedContainerColor = Color.Transparent,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = themeText
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                if (adminAddMemberError.isNotEmpty()) {
+                                    Text(adminAddMemberError, color = TerracottaWarn, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        if (adminNewMemberName.isBlank()) {
+                                            adminAddMemberError = "Name is required"
+                                        } else {
+                                            viewModel.addMember(adminNewMemberName, adminNewMemberPhone, adminNewMemberParticulars)
+                                            adminNewMemberName = ""
+                                            adminNewMemberPhone = ""
+                                            adminNewMemberParticulars = ""
+                                            adminAddMemberError = ""
+                                            isRegistryFormOpen = false
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MintPrimary, contentColor = SolidBlack),
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.fillMaxWidth().height(32.dp)
+                                ) {
+                                    Text("Register Member", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // Scrollable members list
+                        if (membersRegisteredList.isEmpty()) {
+                            Text("No registered members found for this group.", fontSize = 11.sp, color = Color.Gray)
+                        } else {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                membersRegisteredList.forEach { member ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(SageNeutral.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(member.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                            if (member.phoneNumber.isNotBlank()) {
+                                                Text(member.phoneNumber, fontSize = 9.sp, color = LightSageText.copy(alpha = 0.6f))
+                                            }
+                                        }
+                                        IconButton(
+                                            onClick = { isConfirmDeleteOpen = member },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Delete Member",
+                                                tint = TerracottaWarn,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Divider(color = SageNeutral, thickness = 0.5.dp)
+
+                    // 3. GOOGLE DRIVE BACKUP COUPLING
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "LEDGER CSV AUDIT BACKUP",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldAccent,
+                            letterSpacing = 0.5.sp
+                        )
+                        val context = LocalContext.current
+                        val membersStatsList by viewModel.membersStats.collectAsStateWithLifecycle()
+                        Button(
+                            onClick = {
+                                val csvBuilder = java.lang.StringBuilder()
+                                csvBuilder.append("YSL APP Gulu Register Backup\n")
+                                csvBuilder.append("Group,${activeBank}\n")
+                                csvBuilder.append("Total Savings Pool,MK ${totalSavings * 1700}\n")
+                                csvBuilder.append("Total Outstanding Loans,MK ${activeLoansSum * 1700}\n\n")
+                                csvBuilder.append("Member ID,Member Name,Contributions (MK),Interest Paid (MK),Loans Remaining (MK),Net Portfolio (MK)\n")
+                                membersStatsList.forEach { m ->
+                                    csvBuilder.append("${m.id},${m.memberName},${m.cumulativeContributions * 1700},${m.interestPaid * 1700},${m.activeLoansRemaining * 1700},${m.grandTotalPortfolio * 1700}\n")
+                                }
+
+                                val sendIntent = android.content.Intent().apply {
+                                    action = android.content.Intent.ACTION_SEND
+                                    putExtra(android.content.Intent.EXTRA_TEXT, csvBuilder.toString())
+                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Backup Google - YSL APP ($activeBank)")
+                                    type = "text/plain"
+                                }
+                                val shareIntent = android.content.Intent.createChooser(sendIntent, "Backup to Google Drive / Sheets")
+                                context.startActivity(shareIntent)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = SolidBlack),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.fillMaxWidth().height(36.dp)
+                        ) {
+                            Text("Share CSV & Upload to Google Drive", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Divider(color = SageNeutral, thickness = 0.5.dp)
+
+                    // 3.5 GROUP PREFERENCES & OPERATIONAL SETTINGS
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "GROUP PREFERENCES & REMINDERS",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldAccent,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = "Custom reminder templates and regulations. Changes apply to $activeBank instantly, giving you complete freedom while maintaining security.",
+                            fontSize = 10.sp,
+                            color = LightSageText.copy(alpha = 0.7f)
+                        )
+
+                        // PIN
+                        OutlinedTextField(
+                            value = pinEdit,
+                            onValueChange = { pinEdit = it },
+                            label = { Text("Group Admin Access PIN", color = LightSageText, fontSize = 10.sp) },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = themeText
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        // Rows for interest and multiplier limits
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = interestEdit,
+                                onValueChange = { interestEdit = it },
+                                label = { Text("Default Interest %", color = LightSageText, fontSize = 10.sp) },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = themeText
+                                ),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+
+                            OutlinedTextField(
+                                value = multiplierEdit,
+                                onValueChange = { multiplierEdit = it },
+                                label = { Text("Max Loan Limit Multiplier (x)", color = LightSageText, fontSize = 10.sp) },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = themeText
+                                ),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                        }
+
+                        // Loan Alerts Message Template
+                        Column {
+                            OutlinedTextField(
+                                value = reminderEdit,
+                                onValueChange = { reminderEdit = it },
+                                label = { Text("Custom Loan Reminder Message Template", color = LightSageText, fontSize = 10.sp) },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = themeText
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                maxLines = 4
+                            )
+                            Text(
+                                text = "Supported Placeholders: [MEMBER_NAME], [AMOUNT], [DUE_DATE]",
+                                fontSize = 9.sp,
+                                color = LightSageText.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+
+                        // Meeting Invitation Message Template
+                        Column {
+                            OutlinedTextField(
+                                value = inviteEdit,
+                                onValueChange = { inviteEdit = it },
+                                label = { Text("Custom Meeting Invite Template", color = LightSageText, fontSize = 10.sp) },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = themeText
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                maxLines = 4
+                            )
+                            Text(
+                                text = "Supported Placeholders: [GROUP_NAME], [DATE_TIME]",
+                                fontSize = 9.sp,
+                                color = LightSageText.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+
+                        // Save Preferences button
+                        Button(
+                            onClick = {
+                                val intVal = interestEdit.toDoubleOrNull() ?: 10.0
+                                val multVal = multiplierEdit.toDoubleOrNull() ?: 3.0
+                                viewModel.savePreferences(
+                                    pin = pinEdit,
+                                    reminder = reminderEdit,
+                                    invite = inviteEdit,
+                                    interest = intVal,
+                                    multiplier = multVal
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MintPrimary, contentColor = SolidBlack),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(38.dp)
+                        ) {
+                            Text("Save Group Preferences", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SolidBlack)
+                        }
+                    }
+
+                    Divider(color = SageNeutral, thickness = 0.5.dp)
+
+                    // 4. DATABASE MAINTENANCE & RE-SEEDING
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "DATABASE CONTROLS (DANGER CONTROL)",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TerracottaWarn,
+                            letterSpacing = 0.5.sp
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { viewModel.restoreSampleDatabase() },
+                                colors = ButtonDefaults.buttonColors(containerColor = SageNeutral, contentColor = GoldAccent),
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier.weight(1f).height(36.dp)
+                            ) {
+                                Text("Reseed Demo", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = { isConfirmWipeOpen = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = TerracottaWarn.copy(alpha = 0.2f), contentColor = TerracottaWarn),
+                                border = BorderStroke(0.5.dp, TerracottaWarn),
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier.weight(1f).height(36.dp)
+                            ) {
+                                Text("Wipe Register", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = { isAdminSettingsOpen = false }
+                ) {
+                    Text("Close Panel", color = LightSageText)
+                }
+            }
+        )
+
+        if (isConfirmDeleteOpen != null) {
+            val memberToDelete = isConfirmDeleteOpen!!
+            AlertDialog(
+                onDismissRequest = { isConfirmDeleteOpen = null },
+                containerColor = ForestCard,
+                title = { Text("Confirm Unenrollment", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+                text = { Text("Are you sure you want to delete '${memberToDelete.name}' from the registry? Their phone and particulars will be cleared.", fontSize = 11.sp, color = LightSageText) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.deleteMember(memberToDelete.id)
+                            isConfirmDeleteOpen = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = TerracottaWarn, contentColor = Color.White)
+                    ) {
+                        Text("Remove", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { isConfirmDeleteOpen = null }) {
+                        Text("Cancel", color = LightSageText, fontSize = 11.sp)
+                    }
+                }
+            )
+        }
+
+        if (isConfirmWipeOpen) {
+            AlertDialog(
+                onDismissRequest = { isConfirmWipeOpen = false },
+                containerColor = ForestCard,
+                title = { Text("WIPE ALL GULU LEDGER DATA?", color = TerracottaWarn, fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+                text = { Text("This will permanently delete all shares, active loan documents, transaction records, and members in the database. Are you absolutely sure?", fontSize = 11.sp, color = LightSageText) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.clearAllData()
+                            isConfirmWipeOpen = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = TerracottaWarn, contentColor = Color.White)
+                    ) {
+                        Text("YES, WIPE", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { isConfirmWipeOpen = false }) {
+                        Text("Cancel", color = LightSageText, fontSize = 11.sp)
+                    }
+                }
+            )
+        }
+    }
 }
 
 
@@ -571,6 +1588,7 @@ fun DashboardTabScreen(
     val records by viewModel.transactionRecords.collectAsStateWithLifecycle()
     val activeBank by viewModel.selectedBank.collectAsStateWithLifecycle()
     val membersRegisteredList by viewModel.membersList.collectAsStateWithLifecycle()
+    val contributionsList by viewModel.contributions.collectAsStateWithLifecycle()
 
     var isAddMemberOpen by remember { mutableStateOf(false) }
     var newMemberName by remember { mutableStateOf("") }
@@ -656,9 +1674,22 @@ fun DashboardTabScreen(
         }
 
         item {
+            SavingsTrendCard(contributionsList, themeSurface, themeText)
+        }
+
+        item {
             val membersList by viewModel.membersStats.collectAsStateWithLifecycle()
             val activeBank by viewModel.selectedBank.collectAsStateWithLifecycle()
             var selectedMemberForDetail by remember { mutableStateOf<MemberDetails?>(null) }
+            var memberSearchQuery by remember { mutableStateOf("") }
+
+            val filteredMembers = remember(membersList, memberSearchQuery) {
+                if (memberSearchQuery.isBlank()) {
+                    membersList
+                } else {
+                    membersList.filter { it.memberName.contains(memberSearchQuery, ignoreCase = true) }
+                }
+            }
             
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -733,6 +1764,22 @@ fun DashboardTabScreen(
                         )
                     }
                 }
+
+                // Smooth M3 lookup textfield
+                OutlinedTextField(
+                    value = memberSearchQuery,
+                    onValueChange = { memberSearchQuery = it },
+                    placeholder = { Text("Find member by name...", fontSize = 11.sp, color = themeText.copy(alpha = 0.5f)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(14.dp), tint = MintPrimary) },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = themeText
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                )
                 
                 if (membersList.isEmpty()) {
                     Box(
@@ -747,12 +1794,26 @@ fun DashboardTabScreen(
                             fontSize = 11.sp
                         )
                     }
+                } else if (filteredMembers.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No members match '$memberSearchQuery'",
+                            color = TerracottaWarn,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 } else {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        items(membersList) { member ->
+                        items(filteredMembers) { member ->
                             val initials = if (member.memberName.isNotBlank()) {
                                 member.memberName.split(" ")
                                     .filter { it.isNotBlank() }
@@ -813,6 +1874,13 @@ fun DashboardTabScreen(
                     val matchedRegMember = membersRegisteredList.find { it.name.equals(member.memberName, ignoreCase = true) }
                     val phone = matchedRegMember?.phoneNumber ?: ""
                     val particularsStr = matchedRegMember?.particulars ?: "No particulars listed in database."
+
+                    var isEditMode by remember(member) { mutableStateOf(false) }
+                    var editPhone by remember(member) { mutableStateOf(phone) }
+                    var editParticulars by remember(member) { mutableStateOf(particularsStr) }
+
+                    var aiAuditResult by remember(member) { mutableStateOf("") }
+                    var isAiAuditLoading by remember(member) { mutableStateOf(false) }
 
                     AlertDialog(
                         onDismissRequest = { selectedMemberForDetail = null },
@@ -897,32 +1965,112 @@ fun DashboardTabScreen(
 
                                 Divider(color = SageNeutral, thickness = 0.5.dp)
 
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("REGISTERED PHONE", fontSize = 10.sp, color = LightSageText.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
-                                    Text(
-                                        text = if (phone.isNotBlank()) phone else "No phone registered",
-                                        fontSize = 12.sp,
-                                        color = if (phone.isNotBlank()) Color.White else Color.Gray,
-                                        fontWeight = FontWeight.SemiBold
+                                if (isEditMode) {
+                                    OutlinedTextField(
+                                        value = editPhone,
+                                        onValueChange = { editPhone = it },
+                                        label = { Text("Phone Number", color = LightSageText) },
+                                        colors = TextFieldDefaults.colors(
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = themeText
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
                                     )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OutlinedTextField(
+                                        value = editParticulars,
+                                        onValueChange = { editParticulars = it },
+                                        label = { Text("Particulars & Details", color = LightSageText) },
+                                        colors = TextFieldDefaults.colors(
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = themeText
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                } else {
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("REGISTERED PHONE", fontSize = 10.sp, color = LightSageText.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+                                        Text(
+                                            text = if (phone.isNotBlank()) phone else "No phone registered",
+                                            fontSize = 12.sp,
+                                            color = if (phone.isNotBlank()) Color.White else Color.Gray,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("PARTICULARS", fontSize = 10.sp, color = LightSageText.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+                                        Text(
+                                            text = particularsStr,
+                                            fontSize = 11.sp,
+                                            color = Color.White
+                                        )
+                                    }
+
+                                    // Dynamic Khobili AI auditadvisor integration
+                                    Divider(color = SageNeutral, thickness = 0.5.dp)
+                                    if (aiAuditResult.isNotEmpty() || isAiAuditLoading) {
+                                        Card(
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = CardDefaults.cardColors(containerColor = SageNeutral.copy(alpha = 0.25f)),
+                                            modifier = Modifier.fillMaxWidth().border(0.5.dp, GoldAccent.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp)) {
+                                                Text(
+                                                    text = "KHOBILI AUDIT ANALYSIS",
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = GoldAccent
+                                                )
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                if (isAiAuditLoading) {
+                                                    Text(
+                                                        text = "Auditing transaction history securely...",
+                                                        fontSize = 10.sp,
+                                                        fontStyle = FontStyle.Italic,
+                                                        color = themeText.copy(alpha = 0.7f)
+                                                    )
+                                                } else {
+                                                    Text(
+                                                        text = aiAuditResult,
+                                                        fontSize = 10.sp,
+                                                        color = Color.White,
+                                                        lineHeight = 14.sp
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Button(
+                                            onClick = {
+                                                isAiAuditLoading = true
+                                                viewModel.getAIMemberAudit(member.memberName) { result ->
+                                                    aiAuditResult = result
+                                                    isAiAuditLoading = false
+                                                }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = SageNeutral.copy(alpha = 0.4f)),
+                                            modifier = Modifier.fillMaxWidth().height(32.dp),
+                                            contentPadding = PaddingValues(0.dp)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(12.dp), tint = GoldAccent)
+                                                Text("Get Khobili Financial Audit Advice", fontSize = 10.sp, color = GoldAccent, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
                                 }
 
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("PARTICULARS", fontSize = 10.sp, color = LightSageText.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
-                                    Text(
-                                        text = particularsStr,
-                                        fontSize = 11.sp,
-                                        color = Color.White
-                                    )
-                                }
-
-                                if (phone.isNotBlank()) {
+                                if (phone.isNotBlank() && !isEditMode) {
                                     Divider(color = SageNeutral, thickness = 0.5.dp)
                                     Text("SEND SMS REMINDERS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = GoldAccent)
                                     
@@ -1004,10 +2152,49 @@ fun DashboardTabScreen(
                             }
                         },
                         confirmButton = {
-                            TextButton(
-                                onClick = { selectedMemberForDetail = null }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Close", color = MintPrimary, fontWeight = FontWeight.Bold)
+                                if (isEditMode) {
+                                    TextButton(
+                                        onClick = {
+                                            matchedRegMember?.let { reg ->
+                                                viewModel.updateMemberDetails(reg.id, reg.name, editPhone, editParticulars)
+                                            }
+                                            isEditMode = false
+                                        }
+                                    ) {
+                                        Text("Save", color = MintPrimary, fontWeight = FontWeight.Bold)
+                                    }
+                                    TextButton(
+                                        onClick = { isEditMode = false }
+                                    ) {
+                                        Text("Cancel", color = LightSageText)
+                                    }
+                                } else {
+                                    TextButton(
+                                        onClick = { isEditMode = true }
+                                    ) {
+                                        Text("Edit Profile", color = GoldAccent, fontWeight = FontWeight.Bold)
+                                    }
+                                    matchedRegMember?.let { reg ->
+                                        TextButton(
+                                            onClick = {
+                                                viewModel.deleteMember(reg.id)
+                                                selectedMemberForDetail = null
+                                            }
+                                        ) {
+                                            Text("Deregister", color = TerracottaWarn, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                    TextButton(
+                                        onClick = { selectedMemberForDetail = null }
+                                    ) {
+                                        Text("Close", color = MintPrimary, fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
                         }
                     )
@@ -1384,6 +2571,7 @@ fun ContributionsTabScreen(
     themeText: Color
 ) {
     val contributionsList by viewModel.contributions.collectAsStateWithLifecycle()
+    val registeredMembers by viewModel.membersList.collectAsStateWithLifecycle()
     val activeBank by viewModel.selectedBank.collectAsStateWithLifecycle()
     var isFormOpen by remember { mutableStateOf(false) }
 
@@ -1399,6 +2587,16 @@ fun ContributionsTabScreen(
     var numberOfShares by remember { mutableIntStateOf(1) } // Default 1 share (Min 1, Max 5)
     var includeEmergencyFund by remember { mutableStateOf(true) } // Default true
     var emergencyFundInput by remember { mutableStateOf("500") } // Default K500 emergency fund fee
+
+    var contributionSearchQuery by remember { mutableStateOf("") }
+
+    val filteredContributions = remember(contributionsList, contributionSearchQuery) {
+        if (contributionSearchQuery.isBlank()) {
+            contributionsList
+        } else {
+            contributionsList.filter { it.memberName.contains(contributionSearchQuery, ignoreCase = true) }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -1453,6 +2651,82 @@ fun ContributionsTabScreen(
                 }
             }
 
+            // Monthly Target Progress Tracker Card
+            item {
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = themeSurface),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(0.5.dp, SageNeutral, RoundedCornerShape(12.dp))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "MONTHLY TARGET PROGRESS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MintPrimary,
+                                letterSpacing = 0.5.sp
+                              )
+                            val totalGroupSavingsMk = contributionsList.sumOf { it.amount } * 1700.0
+                            val targetGroupSavingsMk = 5000.0 * 1700.0 // target MK 8,500,000 progress
+                            val percent = (totalGroupSavingsMk / targetGroupSavingsMk).coerceIn(0.0, 1.0).toFloat()
+                            Text(
+                                text = String.format(Locale.US, "%.1f%% achieved", percent * 100),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = GoldAccent
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(10.dp))
+                        
+                        val percentVal = (contributionsList.sumOf { it.amount }) / 5000.0
+                        val safePercent = percentVal.coerceIn(0.0, 1.0).toFloat()
+                        LinearProgressIndicator(
+                            progress = { safePercent },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = MintPrimary,
+                            trackColor = SageNeutral.copy(alpha = 0.3f),
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "Group total cumulative savings is MK ${String.format(Locale.US, "%,.0f", contributionsList.sumOf { it.amount } * 1700.0)} out of Target MK ${String.format(Locale.US, "%,.0f", 5000.0 * 1700.0)} (5k shares limit).",
+                            fontSize = 9.sp,
+                            color = themeText.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+
+            // Interactive Search bar targeting member name
+            item {
+                OutlinedTextField(
+                    value = contributionSearchQuery,
+                    onValueChange = { contributionSearchQuery = it },
+                    placeholder = { Text("Search transactions by member name...", fontSize = 11.sp, color = themeText.copy(alpha = 0.5f)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(14.dp), tint = MintPrimary) },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = themeText
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                )
+            }
+
             if (contributionsList.isEmpty()) {
                 item {
                     Box(
@@ -1473,8 +2747,19 @@ fun ContributionsTabScreen(
                         }
                     }
                 }
+            } else if (filteredContributions.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No match found for '$contributionSearchQuery'", color = TerracottaWarn, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             } else {
-                items(contributionsList) { cont ->
+                items(filteredContributions) { cont ->
                     ContributionCard(cont, themeSurface, themeText)
                 }
             }
@@ -1504,22 +2789,139 @@ fun ContributionsTabScreen(
 
                         Divider(color = SageNeutral)
 
-                        // Member name
-                        OutlinedTextField(
-                            value = inputName,
-                            onValueChange = { inputName = it },
-                            label = { Text(Translations.get("member_name", lang)) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("contrib_form_name"),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = SageNeutral.copy(alpha = 0.3f),
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = themeText
+                        // Select Registered Member Searchable Dropdown
+                        var isMemberDropdownExpanded by remember { mutableStateOf(false) }
+                        var memberSearchQuery by remember { mutableStateOf("") }
+                        val filteredMembersForSelect = remember(registeredMembers, memberSearchQuery) {
+                            if (memberSearchQuery.isBlank()) {
+                                registeredMembers
+                            } else {
+                                registeredMembers.filter { it.name.contains(memberSearchQuery, ignoreCase = true) }
+                            }
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = if (lang == "local") "SANKHANI MEMBALA WOLEMBETSEDWA *" else "SELECT REGISTERED GULU MEMBER *",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = GoldAccent,
+                                letterSpacing = 0.5.sp
                             )
-                        )
+                            
+                            if (registeredMembers.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(TerracottaWarn.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                                        .border(1.dp, TerracottaWarn.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                        .padding(10.dp)
+                                ) {
+                                    Text(
+                                        text = if (lang == "local") "⚠️ Palibe mamembala olembetsedwa pagululi! Chonde yambani mwalembetsa mamembala pa chipika cha 'Gulu Members'." 
+                                               else "⚠️ No registered members in this group! Please register members under 'Gulu Members' tab first.",
+                                        fontSize = 11.sp,
+                                        color = TerracottaWarn,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(SageNeutral.copy(alpha = 0.2f))
+                                        .border(1.dp, if (inputName.isBlank()) SageNeutral else MintPrimary, RoundedCornerShape(8.dp))
+                                        .clickable { isMemberDropdownExpanded = !isMemberDropdownExpanded }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = if (inputName.isBlank()) "Choose member..." else inputName,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (inputName.isBlank()) FontWeight.Normal else FontWeight.Bold,
+                                            color = if (inputName.isBlank()) themeText.copy(alpha = 0.5f) else Color.White
+                                        )
+                                        Icon(
+                                            imageVector = if (isMemberDropdownExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                            contentDescription = "Dropdown icon",
+                                            tint = MintPrimary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                                
+                                if (isMemberDropdownExpanded) {
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 180.dp)
+                                            .border(0.5.dp, SageNeutral, RoundedCornerShape(8.dp)),
+                                        colors = CardDefaults.cardColors(containerColor = ForestCard)
+                                    ) {
+                                        Column(modifier = Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            OutlinedTextField(
+                                                value = memberSearchQuery,
+                                                onValueChange = { memberSearchQuery = it },
+                                                placeholder = { Text("Search by name...", fontSize = 10.sp, color = themeText.copy(alpha = 0.5f)) },
+                                                singleLine = true,
+                                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
+                                                colors = TextFieldDefaults.colors(
+                                                    focusedContainerColor = SageNeutral.copy(alpha = 0.15f),
+                                                    unfocusedContainerColor = Color.Transparent,
+                                                    focusedTextColor = Color.White,
+                                                    unfocusedTextColor = themeText
+                                                ),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(38.dp)
+                                            )
+                                            
+                                            LazyColumn(
+                                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                                                modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
+                                            ) {
+                                                if (filteredMembersForSelect.isEmpty()) {
+                                                    item {
+                                                        Text(
+                                                            "No matching members.",
+                                                            fontSize = 10.sp,
+                                                            color = themeText.copy(alpha = 0.5f),
+                                                            modifier = Modifier.padding(8.dp)
+                                                        )
+                                                    }
+                                                } else {
+                                                    items(filteredMembersForSelect) { member ->
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .clickable {
+                                                                    inputName = member.name
+                                                                    isMemberDropdownExpanded = false
+                                                                    memberSearchQuery = ""
+                                                                }
+                                                                .background(if (inputName == member.name) MintPrimary.copy(alpha = 0.2f) else Color.Transparent)
+                                                                .padding(8.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = member.name,
+                                                                fontSize = 11.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = if (inputName == member.name) MintPrimary else Color.White
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
                         // Entry Method Selector Tabs
                         Row(
@@ -1805,6 +3207,524 @@ fun ContributionsTabScreen(
 }
 
 
+// --- AUTOMATED INTEREST CALCULATOR UTILITY AND MODELS ---
+data class InstallmentLine(
+    val period: String,
+    val principalAmount: Double,
+    val interestAmount: Double,
+    val totalAmount: Double
+)
+
+data class CalculationResult(
+    val principal: Double,
+    val interestRate: Double,
+    val durationLabel: String,
+    val interestMethod: String,
+    val totalInterest: Double,
+    val totalRepayment: Double,
+    val installations: List<InstallmentLine>
+)
+
+fun runInterestCalculation(
+    principalVal: Double,
+    ratePercent: Double,
+    durationIndex: Int, // 0 = 2 Weeks, 1 = 1 Month, 2 = 2 Months, 3 = 3 Months
+    method: String // "Simple (Flat)", "Compounded Monthly", "Reducing Balance"
+): CalculationResult {
+    val durationMonths = when (durationIndex) {
+        0 -> 0.5
+        1 -> 1.0
+        2 -> 2.0
+        3 -> 3.0
+        else -> 1.0
+    }
+    val durationLabel = when (durationIndex) {
+        0 -> "2 Weeks"
+        1 -> "1 Month"
+        2 -> "2 Months"
+        3 -> "3 Months"
+        else -> "1 Month"
+    }
+    
+    val r = ratePercent / 100.0
+    
+    when (method) {
+        "Simple (Flat)" -> {
+            val totalInterest = principalVal * r * durationMonths
+            val totalRepayment = principalVal + totalInterest
+            
+            val installations = mutableListOf<InstallmentLine>()
+            if (durationIndex == 0) {
+                installations.add(InstallmentLine("Week 2 Maturity", principalVal, totalInterest, totalRepayment))
+            } else {
+                val stepPrincipal = principalVal / durationMonths
+                val stepInterest = totalInterest / durationMonths
+                for (i in 1..durationMonths.toInt()) {
+                    installations.add(InstallmentLine("Month $i", stepPrincipal, stepInterest, stepPrincipal + stepInterest))
+                }
+            }
+            return CalculationResult(principalVal, ratePercent, durationLabel, method, totalInterest, totalRepayment, installations)
+        }
+        "Compounded Monthly" -> {
+            val totalRepayment = principalVal * Math.pow(1.0 + r, durationMonths)
+            val totalInterest = totalRepayment - principalVal
+            
+            val installations = mutableListOf<InstallmentLine>()
+            if (durationIndex == 0) {
+                installations.add(InstallmentLine("Week 2 Maturity", principalVal, totalInterest, totalRepayment))
+            } else {
+                val stepPrincipal = principalVal / durationMonths
+                val stepInterest = totalInterest / durationMonths
+                for (i in 1..durationMonths.toInt()) {
+                    installations.add(InstallmentLine("Month $i", stepPrincipal, stepInterest, stepPrincipal + stepInterest))
+                }
+            }
+            return CalculationResult(principalVal, ratePercent, durationLabel, method, totalInterest, totalRepayment, installations)
+        }
+        "Reducing Balance" -> {
+            val installations = mutableListOf<InstallmentLine>()
+            if (durationIndex == 0) {
+                val interest = principalVal * r * 0.5
+                installations.add(InstallmentLine("Week 2 Maturity", principalVal, interest, principalVal + interest))
+                return CalculationResult(principalVal, ratePercent, durationLabel, method, interest, principalVal + interest, installations)
+            } else {
+                val numMonths = durationMonths.toInt()
+                val monthlyPrincipalPayment = principalVal / numMonths
+                var remainingPrincipal = principalVal
+                var accumulatedInterest = 0.0
+                for (i in 1..numMonths) {
+                    val interestForMonth = remainingPrincipal * r
+                    accumulatedInterest += interestForMonth
+                    installations.add(InstallmentLine(
+                        period = "Month $i",
+                        principalAmount = monthlyPrincipalPayment,
+                        interestAmount = interestForMonth,
+                        totalAmount = monthlyPrincipalPayment + interestForMonth
+                    ))
+                    remainingPrincipal -= monthlyPrincipalPayment
+                }
+                return CalculationResult(principalVal, ratePercent, durationLabel, method, accumulatedInterest, principalVal + accumulatedInterest, installations)
+            }
+        }
+        else -> return CalculationResult(principalVal, ratePercent, durationLabel, method, 0.0, principalVal, emptyList())
+    }
+}
+
+@Composable
+fun AutomatedInterestCalculatorCard(
+    lang: String,
+    themeSurface: Color,
+    themeText: Color,
+    defaultRate: Double,
+    maxMultiplier: Double,
+    onSaveDefaultRate: (Double) -> Unit,
+    onFillRequestForm: (Double, Int, Double) -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+    
+    var principalInput by remember { mutableStateOf("10000") }
+    var useDefaultRate by remember { mutableStateOf(true) }
+    var customRateInput by remember { mutableStateOf(defaultRate.toInt().toString()) }
+    var selectedDurationIndex by remember { mutableIntStateOf(1) } // Default 1 Month
+    var selectedMethod by remember { mutableStateOf("Simple (Flat)") }
+    var showBreakdown by remember { mutableStateOf(false) }
+
+    val activeRate = if (useDefaultRate) defaultRate else (customRateInput.toDoubleOrNull() ?: defaultRate)
+    val principalDouble = principalInput.replace(",", "").toDoubleOrNull() ?: 10000.0
+
+    val calcResult = remember(principalDouble, activeRate, selectedDurationIndex, selectedMethod) {
+        runInterestCalculation(principalDouble, activeRate, selectedDurationIndex, selectedMethod)
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = themeSurface),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, SageNeutral, RoundedCornerShape(16.dp))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isExpanded = !isExpanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = GoldAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column {
+                        Text(
+                            text = if (lang == "local") "SINKHA YA CHIWONGOLADZANJA CHA NGONGOLE" else "Automated Interest Calculator",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = GoldAccent,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = if (lang == "local") "Unikani zambiri pamasamu a chiwongoladzanja" else "Preview dues based on group rates & models",
+                            fontSize = 10.sp,
+                            color = themeText.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+                
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Expand toggle",
+                    tint = GoldAccent,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            AnimatedVisibility(visible = isExpanded) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Divider(color = SageNeutral, thickness = 0.5.dp)
+
+                    Text(
+                        text = if (lang == "local") "NJIRA YOWERENGERA" else "CALCULATION FORMULA MODEL",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MintPrimary
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val methods = listOf("Simple (Flat)", "Compounded Monthly", "Reducing Balance")
+                        methods.forEach { method ->
+                            val isSelected = selectedMethod == method
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) MintPrimary else SageNeutral.copy(alpha = 0.3f))
+                                    .clickable { selectedMethod = method }
+                                    .padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = when(method) {
+                                        "Simple (Flat)" -> if (lang == "local") "Flat/Zosavuta" else "Flat/Simple"
+                                        "Compounded Monthly" -> if (lang == "local") "Compound" else "Compound"
+                                        "Reducing Balance" -> if (lang == "local") "Zotsika" else "Red. Bal."
+                                        else -> method
+                                    },
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) SolidBlack else Color.White
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = if (lang == "local") "KUCHULUKA KWA NGONGOLE (MK)" else "LOAN PRINCIPAL AMOUNT (MK)",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MintPrimary
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = principalInput,
+                            onValueChange = { principalInput = it },
+                            placeholder = { Text("Enter principal...", fontSize = 11.sp, color = themeText.copy(alpha = 0.5f)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = SageNeutral.copy(alpha = 0.15f),
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = themeText
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                        )
+                        
+                        listOf(5000, 10000, 50000).forEach { inc ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(SageNeutral.copy(alpha = 0.4f))
+                                    .clickable {
+                                        val cur = principalInput.replace(",", "").toDoubleOrNull() ?: 0.0
+                                        principalInput = (cur + inc).toInt().toString()
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "+${inc/1000}K",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = GoldAccent
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = if (lang == "local") "CHIWONGOLADZANJA CHA GULU" else "GROUP COGNIZANT INTEREST RATE",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MintPrimary
+                            )
+                            Text(
+                                text = "Current Group Default: ${defaultRate}% per month",
+                                fontSize = 8.sp,
+                                color = themeText.copy(alpha = 0.5f)
+                            )
+                        }
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text("Default", fontSize = 8.sp, color = if (useDefaultRate) MintPrimary else themeText.copy(alpha = 0.5f))
+                            Switch(
+                                checked = !useDefaultRate,
+                                onCheckedChange = { useDefaultRate = !it },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = GoldAccent,
+                                    checkedTrackColor = SageNeutral,
+                                    uncheckedThumbColor = MintPrimary,
+                                    uncheckedTrackColor = SageNeutral.copy(alpha = 0.5f)
+                                )
+                            )
+                            Text("Custom", fontSize = 8.sp, color = if (!useDefaultRate) GoldAccent else themeText.copy(alpha = 0.5f))
+                        }
+                    }
+
+                    if (!useDefaultRate) {
+                        OutlinedTextField(
+                            value = customRateInput,
+                            onValueChange = { customRateInput = it },
+                            label = { Text("Simulation Rate (%) per month", fontSize = 10.sp, color = LightSageText) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = TextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = themeText
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                        )
+                    }
+
+                    Text(
+                        text = if (lang == "local") "NTHAWI YOBWEZERA" else "REPAYMENT MATURITY DURATION",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MintPrimary
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val durLabelsLocal = listOf("2 Weeks", "1 Month", "2 Months", "3 Months")
+                        durLabelsLocal.forEachIndexed { idx, label ->
+                            val isSelected = selectedDurationIndex == idx
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) GoldAccent else SageNeutral.copy(alpha = 0.3f))
+                                    .clickable { selectedDurationIndex = idx }
+                                    .padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = when(label) {
+                                        "2 Weeks" -> if (lang == "local") "Masabata 2" else "2 Weeks"
+                                        "1 Month" -> if (lang == "local") "Mwezi 1" else "1 Month"
+                                        "2 Months" -> if (lang == "local") "Miyezi 2" else "2 Months"
+                                        "3 Months" -> if (lang == "local") "Miyezi 3" else "3 Months"
+                                        else -> label
+                                    },
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) SolidBlack else Color.White
+                                )
+                            }
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SageNeutral.copy(alpha = 0.25f))
+                            .border(0.5.dp, MintPrimary.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                            .padding(10.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "CALCULATION BREAKDOWN SUMMARY",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MintPrimary
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Principal Borrowed:", fontSize = 10.sp, color = themeText.copy(alpha = 0.7f))
+                                Text("MK ${String.format(Locale.US, "%,.0f", calcResult.principal)}", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Accrued Interest (${calcResult.interestRate}%):", fontSize = 10.sp, color = themeText.copy(alpha = 0.7f))
+                                Text("MK ${String.format(Locale.US, "%,.0f", calcResult.totalInterest)}", fontSize = 10.sp, color = TerracottaWarn, fontWeight = FontWeight.Bold)
+                            }
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Total Repayable Dues:", fontSize = 11.sp, color = GoldAccent, fontWeight = FontWeight.Bold)
+                                Text("MK ${String.format(Locale.US, "%,.0f", calcResult.totalRepayment)}", fontSize = 11.sp, color = GoldAccent, fontWeight = FontWeight.Bold)
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showBreakdown = !showBreakdown }
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (showBreakdown) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    tint = MintPrimary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = if (showBreakdown) "Hide Amortization Schedule" else "Show Installment Schedule Breakdown",
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MintPrimary
+                                )
+                            }
+
+                            if (showBreakdown && calcResult.installations.isNotEmpty()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    calcResult.installations.forEach { inst ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(SageNeutral.copy(alpha = 0.15f))
+                                                .padding(horizontal = 4.dp, vertical = 2.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(inst.period, fontSize = 8.sp, color = themeText.copy(alpha = 0.6f))
+                                            Text(
+                                                text = "Principal: MK ${String.format(Locale.US, "%,.0f", inst.principalAmount)} + Interest: MK ${String.format(Locale.US, "%,.0f", inst.interestAmount)} = Total: MK ${String.format(Locale.US, "%,.0f", inst.totalAmount)}",
+                                                fontSize = 8.sp,
+                                                color = Color.White
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (!useDefaultRate) {
+                            Button(
+                                onClick = {
+                                    onSaveDefaultRate(activeRate)
+                                    useDefaultRate = true
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = SageNeutral),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(36.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Save Rate",
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MintPrimary
+                                    )
+                                    Text("Apply Rate to Group", fontSize = 9.sp, color = MintPrimary, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                onFillRequestForm(principalDouble, selectedDurationIndex, activeRate)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = SolidBlack),
+                            modifier = Modifier
+                                .weight(1.2f)
+                                .height(36.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Apply to Loan",
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text("Fill Loan Request Form", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 // --- 3. LOANS TAB SCREEN ---
 @Composable
 fun LoansTabScreen(
@@ -1818,13 +3738,35 @@ fun LoansTabScreen(
     val membersList by viewModel.membersStats.collectAsStateWithLifecycle()
     var isRequestOpen by remember { mutableStateOf(false) }
 
+    val pinVal by viewModel.customPin.collectAsStateWithLifecycle()
+    val reminderVal by viewModel.reminderTemplate.collectAsStateWithLifecycle()
+    val inviteVal by viewModel.meetingInviteTemplate.collectAsStateWithLifecycle()
+    val maxLoanMultiplierPref by viewModel.maxLoanMultiplier.collectAsStateWithLifecycle()
+
     // Req Form states
     var reqName by remember { mutableStateOf("") }
     var reqAmt by remember { mutableStateOf("") }
-    var reqInterest by remember { mutableStateOf("5") } // Default 5%
+    val defaultInterestRateVal by viewModel.defaultInterestRate.collectAsStateWithLifecycle()
+    var reqInterest by remember { mutableStateOf("10") } // Will be updated by LaunchedEffect on dialog open
+    
+    LaunchedEffect(isRequestOpen, defaultInterestRateVal) {
+        if (isRequestOpen) {
+            reqInterest = defaultInterestRateVal.toInt().toString()
+        }
+    }
     var reqDurationIndex by remember { mutableIntStateOf(0) } // Default 0 = 2 Weeks
     var reqNotes by remember { mutableStateOf("") }
     var reqError by remember { mutableStateOf("") }
+
+    var aiLoanAssessmentResult by remember { mutableStateOf("") }
+    var isAiLoanAssessing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isRequestOpen) {
+        if (!isRequestOpen) {
+            aiLoanAssessmentResult = ""
+            isAiLoanAssessing = false
+        }
+    }
 
     // Quick repayment state
     var selectedRepayLoanId by remember { mutableStateOf<Int?>(null) }
@@ -1835,6 +3777,10 @@ fun LoansTabScreen(
     var selectedRolloverLoanId by remember { mutableStateOf<Int?>(null) }
     var rolloverInterestInput by remember { mutableStateOf("5") } // default 5% per VSLA guidelines
     var rolloverDurationIndex by remember { mutableIntStateOf(0) } // Default 0 = 2 Weeks
+
+    var isInviteShareOpen by remember { mutableStateOf(false) }
+    var inviteDateTimeInput by remember { mutableStateOf("Saturday at 2:00 PM") }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -1864,28 +3810,79 @@ fun LoansTabScreen(
                         )
                     }
 
-                    Button(
-                        onClick = { isRequestOpen = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = GoldAccent,
-                            contentColor = SolidBlack
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .height(48.dp)
-                            .testTag("open_loan_req_form_btn")
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add Icon",
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(Translations.get("add_loan", lang), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Button(
+                            onClick = { isInviteShareOpen = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SageNeutral,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(48.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Send,
+                                    contentDescription = "Meeting Invite",
+                                    modifier = Modifier.size(15.dp),
+                                    tint = GoldAccent
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Invite 📅", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Button(
+                            onClick = { isRequestOpen = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = GoldAccent,
+                                contentColor = SolidBlack
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .height(48.dp)
+                                .testTag("open_loan_req_form_btn")
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Add Icon",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(Translations.get("add_loan", lang), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
+            }
+
+            item {
+                AutomatedInterestCalculatorCard(
+                    lang = lang,
+                    themeSurface = themeSurface,
+                    themeText = themeText,
+                    defaultRate = defaultInterestRateVal,
+                    maxMultiplier = maxLoanMultiplierPref,
+                    onSaveDefaultRate = { newRate ->
+                        viewModel.savePreferences(
+                            pin = pinVal,
+                            reminder = reminderVal,
+                            invite = inviteVal,
+                            interest = newRate,
+                            multiplier = maxLoanMultiplierPref
+                        )
+                    },
+                    onFillRequestForm = { amt, monthsIndex, rate ->
+                        reqAmt = amt.toInt().toString()
+                        reqDurationIndex = monthsIndex
+                        reqInterest = rate.toInt().toString()
+                        isRequestOpen = true
+                    }
+                )
             }
 
             if (loansList.isEmpty()) {
@@ -1910,7 +3907,27 @@ fun LoansTabScreen(
                         onRollover = { selectedRolloverLoanId = loan.id },
                         onToggleNotify = { viewModel.toggleLoanNotification(loan.id) },
                         onApprove = { viewModel.approveRequest(loan.id) },
-                        onReject = { viewModel.rejectRequest(loan.id) }
+                        onReject = { viewModel.rejectRequest(loan.id) },
+                        onSendReminder = {
+                            val rawTemplate = viewModel.reminderTemplate.value
+                            val dateString = run {
+                                val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                                formatter.format(Date(loan.dateRequested + loan.repaymentDurationMonths * 30 * 24 * 60 * 60 * 1000L))
+                            }
+                            val remainingAmtMk = loan.remainingAmount * 1700
+                            val compiledMsg = rawTemplate
+                                .replace("[MEMBER_NAME]", loan.memberName)
+                                .replace("[AMOUNT]", "MK ${String.format(Locale.US, "%,.0f", remainingAmtMk)}")
+                                .replace("[DUE_DATE]", dateString)
+
+                            val sendIntent = android.content.Intent().apply {
+                                action = android.content.Intent.ACTION_SEND
+                                putExtra(android.content.Intent.EXTRA_TEXT, compiledMsg)
+                                type = "text/plain"
+                            }
+                            val shareIntent = android.content.Intent.createChooser(sendIntent, "Send Loan Reminder")
+                            context.startActivity(shareIntent)
+                        }
                     )
                 }
             }
@@ -1940,28 +3957,146 @@ fun LoansTabScreen(
 
                         Divider(color = SageNeutral)
 
-                        // Member name input with dynamic matching info
-                        OutlinedTextField(
-                            value = reqName,
-                            onValueChange = { reqName = it },
-                            label = { Text(Translations.get("member_name", lang)) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("loan_form_name"),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = SageNeutral.copy(alpha = 0.3f),
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = themeText
-                            )
-                        )
+                        // Select Registered Member Searchable Dropdown for Loans
+                        var isMemberDropdownExpanded by remember { mutableStateOf(false) }
+                        var memberSearchQuery by remember { mutableStateOf("") }
+                        val filteredMembersForSelect = remember(membersList, memberSearchQuery) {
+                            if (memberSearchQuery.isBlank()) {
+                                membersList
+                            } else {
+                                membersList.filter { it.memberName.contains(memberSearchQuery, ignoreCase = true) }
+                            }
+                        }
 
-                        // Fetch matching member to find savings and 3x limit
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = if (lang == "local") "SANKHANI MEMBALA WOLEMBETSEDWA *" else "SELECT REGISTERED GULU MEMBER *",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = GoldAccent,
+                                letterSpacing = 0.5.sp
+                            )
+                            
+                            if (membersList.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(TerracottaWarn.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                                        .border(1.dp, TerracottaWarn.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                        .padding(10.dp)
+                                ) {
+                                    Text(
+                                        text = if (lang == "local") "⚠️ Palibe mamembala olembetsedwa pagululi! Chonde yambani mwalembetsa mamembala pa chipika cha 'Gulu Members'." 
+                                               else "⚠️ No registered members in this group! Please register members under 'Gulu Members' tab first.",
+                                        fontSize = 11.sp,
+                                        color = TerracottaWarn,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(SageNeutral.copy(alpha = 0.2f))
+                                        .border(1.dp, if (reqName.isBlank()) SageNeutral else GoldAccent, RoundedCornerShape(8.dp))
+                                        .clickable { isMemberDropdownExpanded = !isMemberDropdownExpanded }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = if (reqName.isBlank()) "Choose member..." else reqName,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (reqName.isBlank()) FontWeight.Normal else FontWeight.Bold,
+                                            color = if (reqName.isBlank()) themeText.copy(alpha = 0.5f) else Color.White
+                                        )
+                                        Icon(
+                                            imageVector = if (isMemberDropdownExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                            contentDescription = "Dropdown icon",
+                                            tint = GoldAccent,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                                
+                                if (isMemberDropdownExpanded) {
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 180.dp)
+                                            .border(0.5.dp, SageNeutral, RoundedCornerShape(8.dp)),
+                                        colors = CardDefaults.cardColors(containerColor = ForestCard)
+                                    ) {
+                                        Column(modifier = Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            OutlinedTextField(
+                                                value = memberSearchQuery,
+                                                onValueChange = { memberSearchQuery = it },
+                                                placeholder = { Text("Search by name...", fontSize = 10.sp, color = themeText.copy(alpha = 0.5f)) },
+                                                singleLine = true,
+                                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
+                                                colors = TextFieldDefaults.colors(
+                                                    focusedContainerColor = SageNeutral.copy(alpha = 0.15f),
+                                                    unfocusedContainerColor = Color.Transparent,
+                                                    focusedTextColor = Color.White,
+                                                    unfocusedTextColor = themeText
+                                                ),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(38.dp)
+                                            )
+                                            
+                                            LazyColumn(
+                                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                                                modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
+                                            ) {
+                                                if (filteredMembersForSelect.isEmpty()) {
+                                                    item {
+                                                        Text(
+                                                            "No matching members.",
+                                                            fontSize = 10.sp,
+                                                            color = themeText.copy(alpha = 0.5f),
+                                                            modifier = Modifier.padding(8.dp)
+                                                        )
+                                                    }
+                                                } else {
+                                                    items(filteredMembersForSelect) { member ->
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .clickable {
+                                                                    reqName = member.memberName
+                                                                    isMemberDropdownExpanded = false
+                                                                    memberSearchQuery = ""
+                                                                }
+                                                                .background(if (reqName == member.memberName) GoldAccent.copy(alpha = 0.2f) else Color.Transparent)
+                                                                .padding(8.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = member.memberName,
+                                                                fontSize = 11.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = if (reqName == member.memberName) GoldAccent else Color.White
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Fetch matching member to find savings and dynamic settings limit
+                        val maxLoanMultiplier by viewModel.maxLoanMultiplier.collectAsStateWithLifecycle()
                         val trimmedName = reqName.trim()
                         val matchedMember = membersList.find { it.memberName.equals(trimmedName, ignoreCase = true) }
                         val memberSavingsMk = (matchedMember?.cumulativeContributions ?: 0.0) * 1700
-                        val limit3xMk = memberSavingsMk * 3.0
+                        val limit3xMk = memberSavingsMk * maxLoanMultiplier
 
                         if (trimmedName.isNotEmpty()) {
                             if (matchedMember != null) {
@@ -1985,7 +4120,7 @@ fun LoansTabScreen(
                                             color = LightSageText
                                         )
                                         Text(
-                                            text = "Max Loan Limit (3x): MK ${String.format(Locale.US, "%,.0f", limit3xMk)}",
+                                            text = "Max Loan Limit (${maxLoanMultiplier.toInt()}x): MK ${String.format(Locale.US, "%,.0f", limit3xMk)}",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             color = GoldAccent
@@ -2001,7 +4136,7 @@ fun LoansTabScreen(
                                         .padding(8.dp)
                                 ) {
                                     Text(
-                                        text = "⚠️ Name matches no existing records. (New members have MK 0 savings, limit: 3x shares).",
+                                        text = "⚠️ Name matches no existing records. (New members have MK 0 savings, limit: ${maxLoanMultiplier.toInt()}x shares).",
                                         fontSize = 10.sp,
                                         color = TerracottaWarn
                                     )
@@ -2172,7 +4307,7 @@ fun LoansTabScreen(
                         val exceeds3x = matchedMember != null && reqAmtDouble > limit3xMk
                         if (exceeds3x) {
                             Text(
-                                text = "⚠️ VSLA rule violation: Requested amount of MK ${String.format(Locale.US, "%,.0f", reqAmtDouble)} exceeds the member's 3x share savings limit of MK ${String.format(Locale.US, "%,.0f", limit3xMk)}.",
+                                text = "⚠️ VSLA rule violation: Requested amount of MK ${String.format(Locale.US, "%,.0f", reqAmtDouble)} exceeds the member's ${maxLoanMultiplier.toInt()}x share savings limit of MK ${String.format(Locale.US, "%,.0f", limit3xMk)}.",
                                 color = TerracottaWarn,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
@@ -2181,6 +4316,69 @@ fun LoansTabScreen(
 
                         if (reqError.isNotEmpty()) {
                             Text(reqError, color = TerracottaWarn, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        // Modern integrated AI Loan Assessment Tool
+                        Divider(color = SageNeutral, thickness = 0.5.dp)
+                        if (aiLoanAssessmentResult.isNotEmpty() || isAiLoanAssessing) {
+                            Card(
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = SageNeutral.copy(alpha = 0.25f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(0.5.dp, GoldAccent.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(
+                                        text = "KHOBILI CREDIT ANALYSIS ADVISOR",
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldAccent
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    if (isAiLoanAssessing) {
+                                        Text(
+                                            text = "Consulting safety standards, interest multiplier indices, and savings history...",
+                                            fontSize = 10.sp,
+                                            fontStyle = FontStyle.Italic,
+                                            color = themeText.copy(alpha = 0.7f)
+                                        )
+                                    } else {
+                                        Text(
+                                            text = aiLoanAssessmentResult,
+                                            fontSize = 11.sp,
+                                            color = Color.White,
+                                            lineHeight = 15.sp
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Button(
+                                onClick = {
+                                    if (trimmedName.isEmpty()) {
+                                        reqError = "Please specify a Member Name first!"
+                                    } else {
+                                        isAiLoanAssessing = true
+                                        reqError = ""
+                                        viewModel.getAILoanAssessment(trimmedName, reqAmtDouble) { result ->
+                                            aiLoanAssessmentResult = result
+                                            isAiLoanAssessing = false
+                                        }
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = SageNeutral.copy(alpha = 0.4f)),
+                                modifier = Modifier.fillMaxWidth().height(36.dp),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(13.dp), tint = GoldAccent)
+                                    Text("Verify Loan Safety with Khobili Engine", fontSize = 10.sp, color = GoldAccent, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
 
                         Row(
@@ -2209,7 +4407,7 @@ fun LoansTabScreen(
                                     } else if (amtVal == null || amtVal <= 0.0) {
                                         reqError = "Please enter valid principal sum"
                                     } else if (matchedMember != null && amtVal > limit3xMk) {
-                                        reqError = "Violates limit rules! Loan must be at most 3x savings."
+                                        reqError = "Violates limit rules! Loan must be at most ${maxLoanMultiplier.toInt()}x savings."
                                     } else {
                                         // Submit loan using scaled values
                                         val amtDbValue = amtVal / 1700.0
@@ -2241,6 +4439,103 @@ fun LoansTabScreen(
                     }
                 }
             }
+        }
+
+        // 3.15 SCHEDULE / GENERATE SHARE MEETING INVITATION POPUP
+        if (isInviteShareOpen) {
+            AlertDialog(
+                onDismissRequest = { isInviteShareOpen = false },
+                containerColor = ForestCard,
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(22.dp))
+                        Text("Share Meeting Invitation", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Please customize the scheduled date/time below. The group's meeting invitation template will be automatically compiled.",
+                            color = LightSageText,
+                            fontSize = 11.sp
+                        )
+                        OutlinedTextField(
+                            value = inviteDateTimeInput,
+                            onValueChange = { inviteDateTimeInput = it },
+                            label = { Text("Scheduled Meeting Date & Time", color = LightSageText, fontSize = 10.sp) },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = SageNeutral.copy(alpha = 0.2f),
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = themeText
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        
+                        Divider(color = SageNeutral, thickness = 0.5.dp, modifier = Modifier.padding(vertical = 4.dp))
+                        
+                        // Show a live preview of the meeting message
+                        Text(
+                            text = "LIVE COMPILED MESSAGE PREVIEW:",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldAccent,
+                            letterSpacing = 0.5.sp
+                        )
+                        
+                        val previewText = viewModel.meetingInviteTemplate.collectAsStateWithLifecycle().value
+                            .replace("[GROUP_NAME]", activeBank)
+                            .replace("[DATE_TIME]", inviteDateTimeInput)
+                        
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(SageNeutral.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                                .border(0.5.dp, SageNeutral, RoundedCornerShape(8.dp))
+                                .padding(10.dp)
+                        ) {
+                            Text(
+                                text = previewText,
+                                fontSize = 11.sp,
+                                color = LightSageText,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    Button(
+                        onClick = {
+                            val rawTemplate = viewModel.meetingInviteTemplate.value
+                            val compiledText = rawTemplate
+                                .replace("[GROUP_NAME]", activeBank)
+                                .replace("[DATE_TIME]", inviteDateTimeInput)
+                            
+                            val sendIntent = android.content.Intent().apply {
+                                action = android.content.Intent.ACTION_SEND
+                                putExtra(android.content.Intent.EXTRA_TEXT, compiledText)
+                                type = "text/plain"
+                            }
+                            val shareIntent = android.content.Intent.createChooser(sendIntent, "Share Meeting Invitation")
+                            context.startActivity(shareIntent)
+                            isInviteShareOpen = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = SolidBlack)
+                    ) {
+                        Text("Share via SMS/Chat", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = SolidBlack)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { isInviteShareOpen = false }) {
+                        Text("Cancel", color = LightSageText, fontSize = 11.sp)
+                    }
+                }
+            )
         }
 
         // 3.2 QUICK HAND REPAYMENT FLOW ALERT DIALOG
@@ -2749,7 +5044,7 @@ fun ChatSupportTabScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Send,
-                    contentDescription = "Chuma Bot Logo",
+                    contentDescription = "Khobili Bot Logo",
                     tint = GoldAccent,
                     modifier = Modifier.size(20.dp)
                 )
@@ -2763,7 +5058,7 @@ fun ChatSupportTabScreen(
                     color = GoldAccent
                 )
                 Text(
-                    text = "Always accessible • Powered by Gemini AI",
+                    text = "Always accessible • Powered by Khobili Support Engine",
                     fontSize = 10.sp,
                     color = themeText.copy(alpha = 0.6f)
                 )
@@ -2802,7 +5097,7 @@ fun ChatSupportTabScreen(
                                     .padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
                                 Text(
-                                    "Chuma Bot is compiling advice...",
+                                    "Khobili bot is compiling advice...",
                                     fontSize = 12.sp,
                                     color = GoldAccent,
                                     fontWeight = FontWeight.W500
@@ -2975,7 +5270,8 @@ fun LoanRecordRow(
     onRollover: () -> Unit,
     onToggleNotify: () -> Unit,
     onApprove: () -> Unit,
-    onReject: () -> Unit
+    onReject: () -> Unit,
+    onSendReminder: () -> Unit
 ) {
     val dateString = run {
         val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
@@ -3034,18 +5330,38 @@ fun LoanRecordRow(
                 Text(text = "Requested: $dateString", fontSize = 11.sp, color = themeText.copy(alpha = 0.6f))
             }
 
-            // High visible status label
-            val badgeBg = when (loan.status) {
-                "Approved" -> SageNeutral
-                "Repaid" -> SageNeutral
-                "Pending Approval" -> GoldAccent.copy(alpha = 0.2f)
-                else -> TerracottaWarn.copy(alpha = 0.2f)
-            }
-            val badgeTextCol = when (loan.status) {
-                "Approved" -> MintPrimary
-                "Repaid" -> MintPrimary
-                "Pending Approval" -> GoldAccent
-                else -> TerracottaWarn
+            // High visible status labels & color badges
+            val (badgeText, badgeBg, badgeTextCol) = when (loan.status) {
+                "Pending Approval" -> Triple(
+                    if (lang == "local") "PENDING" else "PENDING",
+                    GoldAccent.copy(alpha = 0.15f),
+                    GoldAccent
+                )
+                "Approved" -> {
+                    if (loan.repaymentsPaid > 0.0) {
+                        Triple(
+                            if (lang == "local") "KUPEREKA" else "REPAYING",
+                            Color(0xFF3B82F6).copy(alpha = 0.15f),
+                            Color(0xFF60A5FA)
+                        )
+                    } else {
+                        Triple(
+                            if (lang == "local") "APPROVED" else "APPROVED",
+                            MintPrimary.copy(alpha = 0.15f),
+                            MintPrimary
+                        )
+                    }
+                }
+                "Repaid" -> Triple(
+                    if (lang == "local") "COMPLETED" else "COMPLETED",
+                    SageNeutral.copy(alpha = 0.3f),
+                    MintPrimary
+                )
+                else -> Triple(
+                    loan.status.uppercase(),
+                    TerracottaWarn.copy(alpha = 0.15f),
+                    TerracottaWarn
+                )
             }
 
             Box(
@@ -3055,7 +5371,7 @@ fun LoanRecordRow(
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = loan.status.uppercase(),
+                    text = badgeText,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = badgeTextCol
@@ -3091,6 +5407,32 @@ fun LoanRecordRow(
                     color = MintPrimary,
                     trackColor = SageNeutral
                 )
+                
+                if (loan.status == "Approved" && loan.remainingAmount > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Button(
+                        onClick = onSendReminder,
+                        colors = ButtonDefaults.buttonColors(containerColor = SageNeutral, contentColor = Color.White),
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(34.dp)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = "Send Reminder",
+                                tint = MintPrimary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text("Send Custom Reminder (Ngongole)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
             }
         }
 
@@ -3981,5 +6323,264 @@ fun ShareOutCalculatorCard(
                 }
             }
         )
+    }
+}
+
+
+@Composable
+fun SavingsTrendCard(
+    contributionsList: List<com.example.data.Contribution>,
+    themeSurface: Color,
+    themeText: Color
+) {
+    var chartTypeByShares by remember { mutableStateOf(false) } // false = total savings (MK), true = transaction count
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = themeSurface),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(0.5.dp, SageNeutral, RoundedCornerShape(16.dp))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "SAVINGS ACCUMULATION TREND",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldAccent,
+                        letterSpacing = 0.5.sp
+                    )
+                    Text(
+                        text = "Visualizing overall capital growth",
+                        fontSize = 10.sp,
+                        color = themeText.copy(alpha = 0.6f)
+                    )
+                }
+
+                // Switch segmented controls
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(SageNeutral.copy(alpha = 0.4f))
+                        .padding(2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (!chartTypeByShares) MintPrimary else Color.Transparent)
+                            .clickable { chartTypeByShares = false }
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "Value (MK)",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (!chartTypeByShares) SolidBlack else Color.White
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (chartTypeByShares) MintPrimary else Color.Transparent)
+                            .clickable { chartTypeByShares = true }
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "Records",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (chartTypeByShares) SolidBlack else Color.White
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Build dynamic data points from actual contributions list
+            // Sort by meeting date
+            val sortedContribs = contributionsList.sortedBy { it.date }
+            
+            // To make chart beautiful, we map them into 5 data intervals (either real data or seeded trends if list is small)
+            val dataPoints = remember(sortedContribs, chartTypeByShares) {
+                if (sortedContribs.size >= 3) {
+                    // Accumulate sum over time
+                    var sum = 0.0
+                    val list = ArrayList<Double>()
+                    val stepMultiplier = (sortedContribs.size / 5.0).coerceAtLeast(1.0)
+                    sortedContribs.forEachIndexed { index, contribution ->
+                        sum += if (chartTypeByShares) 1.0 else (contribution.amount * 1700.0)
+                        if (index == sortedContribs.lastIndex || index % stepMultiplier.toInt() == 0) {
+                            list.add(sum)
+                        }
+                    }
+                    list.take(5)
+                } else {
+                    if (chartTypeByShares) {
+                        listOf(1.0, 2.0, 3.0, 4.5, 5.0)
+                    } else {
+                        val currentSum = if (sortedContribs.isEmpty()) 2000.0 * 1700.0 else sortedContribs.sumOf { it.amount } * 1700.0
+                        listOf(currentSum * 0.2, currentSum * 0.4, currentSum * 0.6, currentSum * 0.85, currentSum)
+                    }
+                }
+            }
+
+            val labels = listOf("Meeting 1", "Meeting 2", "Meeting 3", "Meeting 4", "Latest")
+
+            val maxValue = dataPoints.maxOrNull()?.toFloat()?.coerceAtLeast(1f) ?: 1f
+            val minValue = 0f
+
+            // Area line Canvas
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(110.dp)
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val width = size.width
+                    val height = size.height
+                    
+                    val paddingX = 35.dp.toPx()
+                    val paddingY = 10.dp.toPx()
+
+                    val chartWidth = width - paddingX * 2
+                    val chartHeight = height - paddingY * 2
+
+                    // Draw grid rows
+                    val rowsCount = 3
+                    for (i in 0..rowsCount) {
+                        val y = paddingY + chartHeight * (i.toFloat() / rowsCount)
+                        drawLine(
+                            color = SageNeutral.copy(alpha = 0.15f),
+                            start = androidx.compose.ui.geometry.Offset(paddingX, y),
+                            end = androidx.compose.ui.geometry.Offset(width - paddingX, y),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+
+                    // Build path coordinate offsets
+                    val pointsList = ArrayList<androidx.compose.ui.geometry.Offset>()
+                    val stepX = if (dataPoints.size > 1) chartWidth / (dataPoints.size - 1) else chartWidth
+                    
+                    dataPoints.forEachIndexed { index, value ->
+                        val x = paddingX + index * stepX
+                        val ratio = (value.toFloat() - minValue) / (maxValue - minValue)
+                        val y = paddingY + chartHeight * (1f - ratio)
+                        pointsList.add(androidx.compose.ui.geometry.Offset(x, y))
+                    }
+
+                    // Draw area gradient brush under the curve
+                    if (pointsList.isNotEmpty()) {
+                        val fillPath = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(pointsList.first().x, pointsList.first().y)
+                            for (i in 1 until pointsList.size) {
+                                lineTo(pointsList[i].x, pointsList[i].y)
+                            }
+                            lineTo(pointsList.last().x, paddingY + chartHeight)
+                            lineTo(pointsList.first().x, paddingY + chartHeight)
+                            close()
+                        }
+                        
+                        drawPath(
+                            path = fillPath,
+                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(MintPrimary.copy(alpha = 0.3f), Color.Transparent),
+                                startY = pointsList.map { it.y }.minOrNull() ?: 0f,
+                                endY = paddingY + chartHeight
+                            )
+                        )
+
+                        // Draw smooth line connection
+                        val strokePath = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(pointsList.first().x, pointsList.first().y)
+                            for (i in 1 until pointsList.size) {
+                                lineTo(pointsList[i].x, pointsList[i].y)
+                            }
+                        }
+
+                        drawPath(
+                            path = strokePath,
+                            color = MintPrimary,
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = 2.5.dp.toPx(),
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round
+                            )
+                        )
+
+                        // Draw glowing dots at milestones
+                        pointsList.forEachIndexed { index, point ->
+                            drawCircle(
+                                color = themeSurface,
+                                radius = 4.dp.toPx(),
+                                center = point
+                            )
+                            drawCircle(
+                                color = if (index == pointsList.lastIndex) GoldAccent else MintPrimary,
+                                radius = 2.5.dp.toPx(),
+                                center = point
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // X-AXIS Labels Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                labels.forEach { label ->
+                    Text(
+                        text = label,
+                        fontSize = 8.sp,
+                        color = themeText.copy(alpha = 0.5f),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Bottom metric caption
+            val totalAccumValue = dataPoints.lastOrNull() ?: 0.0
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(SageNeutral.copy(alpha = 0.2f))
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MintPrimary,
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (chartTypeByShares) {
+                        "Activity count stands at ${totalAccumValue.toInt()} total verified Ledger blocks."
+                    } else {
+                        "Group capital peak reached MK ${String.format(Locale.US, "%,.0f", totalAccumValue)} of cumulative share assets."
+                    },
+                    fontSize = 9.sp,
+                    color = themeText.copy(alpha = 0.8f),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }

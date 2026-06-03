@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
     // Instantiate State ViewModel utilizing injecting Factory
     val viewModel = ViewModelProvider(
       this,
-      SavingsViewModelFactory(repository)
+      SavingsViewModelFactory(repository, applicationContext)
     )[SavingsViewModel::class.java]
 
     setContent {

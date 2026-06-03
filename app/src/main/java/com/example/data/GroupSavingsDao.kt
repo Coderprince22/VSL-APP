@@ -42,11 +42,20 @@ interface GroupSavingsDao {
     @Query("DELETE FROM contributions")
     suspend fun clearContributions()
 
+    @Query("DELETE FROM contributions WHERE groupId = :groupId")
+    suspend fun clearContributionsByGroup(groupId: String)
+
     @Query("DELETE FROM loans")
     suspend fun clearLoans()
 
+    @Query("DELETE FROM loans WHERE groupId = :groupId")
+    suspend fun clearLoansByGroup(groupId: String)
+
     @Query("DELETE FROM transaction_records")
     suspend fun clearTransactionRecords()
+
+    @Query("DELETE FROM transaction_records WHERE groupId = :groupId")
+    suspend fun clearTransactionRecordsByGroup(groupId: String)
 
     // --- Members ---
     @Query("SELECT * FROM members ORDER BY name ASC")
@@ -60,4 +69,7 @@ interface GroupSavingsDao {
 
     @Query("DELETE FROM members")
     suspend fun clearMembers()
+
+    @Query("DELETE FROM members WHERE groupId = :groupId")
+    suspend fun clearMembersByGroup(groupId: String)
 }
